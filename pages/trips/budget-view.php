@@ -115,8 +115,10 @@ require_once __DIR__ . '/../../includes/header.php';
                 <div class="card-header bg-white border-bottom fw-bold">
                     <i class="fa-solid fa-chart-pie me-2 text-primary"></i>Category Breakdown
                 </div>
-                <div class="card-body d-flex align-items-center justify-content-center">
-                    <canvas id="budgetChart" style="max-height: 280px;"></canvas>
+                <div class="card-body d-flex align-items-center justify-content-center p-3" style="min-height: 280px;">
+                    <div style="position: relative; height: 260px; width: 100%;">
+                        <canvas id="budgetChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>

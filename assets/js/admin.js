@@ -227,38 +227,17 @@ function initUserManagement() {
             return;
         }
 
-        let pVal = '<ul class="pagination pagination-sm mb-0 justify-content-end">';
-        pVal += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                    <a class="page-link" href="#" data-page="${currentPage - 1}">Previous</a>
-                 </li>`;
-
-        for (let i = 1; i <= totalPages; i++) {
-            if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-                pVal += `<li class="page-item ${i === currentPage ? 'active' : ''}">
-                            <a class="page-link" href="#" data-page="${i}">${i}</a>
-                         </li>`;
-            } else if (i === currentPage - 3 || i === currentPage + 3) {
-                pVal += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-            }
-        }
-
-        pVal += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-                    <a class="page-link" href="#" data-page="${currentPage + 1}">Next</a>
-                 </li>`;
-        pVal += '</ul>';
-
-        paginationContainer.innerHTML = pVal;
-
-        paginationContainer.querySelectorAll('.page-link').forEach(link => {
-            link.addEventListener('click', function (e) {
-                e.preventDefault();
-                const page = parseInt(this.dataset.page, 10);
-                if (page && page !== currentPage) {
+        if (typeof createWatermelonPagination === 'function') {
+            createWatermelonPagination(paginationContainer, {
+                currentPage: currentPage,
+                totalPages: totalPages,
+                totalItems: filtered.length,
+                onPageChange: (page) => {
                     currentPage = page;
                     renderUsers();
                 }
             });
-        });
+        }
     }
 
     // Search and Filter Listeners

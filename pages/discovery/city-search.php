@@ -97,9 +97,7 @@ $cityId = clean_str($_GET['city_id'] ?? '');
             <div id="citiesResults" class="row g-4"></div>
             
             <!-- City Pagination -->
-            <div class="d-flex justify-content-center mt-4">
-                <ul class="pagination" id="citiesPagination"></ul>
-            </div>
+            <div id="citiesPagination" class="w-100 mt-4"></div>
             
             <div id="citiesLoading" class="text-center py-5 d-none">
                 <div class="spinner-border text-primary" role="status">
@@ -168,9 +166,7 @@ $cityId = clean_str($_GET['city_id'] ?? '');
             <div id="activitiesResults" class="row g-4"></div>
             
             <!-- Activity Pagination -->
-            <div class="d-flex justify-content-center mt-4">
-                <ul class="pagination" id="activitiesPagination"></ul>
-            </div>
+            <div id="activitiesPagination" class="w-100 mt-4"></div>
             
             <div id="activitiesLoading" class="text-center py-5 d-none">
                 <div class="spinner-border text-primary" role="status">
@@ -499,43 +495,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderPagination(containerId, pagination, fetchFunc) {
-        if (pagination.total_pages <= 1) return;
-        
-        const ul = document.getElementById(containerId);
-        let html = '';
-        
-        // Prev
-        html += `<li class="page-item ${pagination.page === 1 ? 'disabled' : ''}">
-                    <a class="page-link" href="#" data-page="${pagination.page - 1}">Previous</a>
-                 </li>`;
-        
-        for (let i = 1; i <= pagination.total_pages; i++) {
-            if (i === 1 || i === pagination.total_pages || (i >= pagination.page - 2 && i <= pagination.page + 2)) {
-                html += `<li class="page-item ${i === pagination.page ? 'active' : ''}">
-                            <a class="page-link" href="#" data-page="${i}">${i}</a>
-                         </li>`;
-            } else if (i === pagination.page - 3 || i === pagination.page + 3) {
-                html += `<li class="page-item disabled"><a class="page-link" href="#">...</a></li>`;
-            }
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        if (!pagination || pagination.total_pages <= 1) {
+            el.innerHTML = '';
+            return;
         }
         
-        // Next
-        html += `<li class="page-item ${pagination.page === pagination.total_pages ? 'disabled' : ''}">
-                    <a class="page-link" href="#" data-page="${pagination.page + 1}">Next</a>
-                 </li>`;
-                 
-        ul.innerHTML = html;
-        
-        ul.querySelectorAll('.page-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const p = parseInt(e.target.dataset.page);
-                if (p && !e.target.parentElement.classList.contains('active') && !e.target.parentElement.classList.contains('disabled')) {
+        if (typeof createWatermelonPagination === 'function') {
+            createWatermelonPagination('#' + containerId, {
+                currentPage: pagination.page,
+                totalPages: pagination.total_pages,
+                totalItems: pagination.total,
+                onPageChange: (p) => {
                     fetchFunc(p);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             });
-        });
+        }
     }
 
     // Modal handlers

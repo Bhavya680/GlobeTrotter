@@ -63,7 +63,7 @@ if ($flash):
 </div>
 <?php endif; ?>
 
-<?php if (isLoggedIn()): ?>
+<?php if (isLoggedIn() && empty($hideNavbar)): ?>
 <!-- ===================== FULL NAVBAR (logged-in) ===================== -->
 <nav class="gt-navbar navbar navbar-expand-lg" id="mainNavbar" role="navigation" aria-label="Main navigation">
     <div class="container-fluid px-3">

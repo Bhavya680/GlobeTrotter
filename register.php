@@ -1,97 +1,65 @@
 <?php
-require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/auth.php';
 
-// If already logged in, redirect to dashboard
-if (isLoggedIn()) {
-    redirect('dashboard.php');
+if (is_logged_in()) {
+    header('Location: /dashboard.php');
+    exit;
 }
 
-$formData = [
-    'first_name' => '', 'last_name' => '', 'email' => '', 
-    'phone' => '', 'city' => '', 'country' => '', 'additional_info' => ''
-];
 $errors = [];
+$name = '';
+$email = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
-        $errors['general'] = "Invalid CSRF token.";
-    } else {
-        $pdo = DB::getInstance();
-        
-        // Populate form data for sticky fields
-        foreach ($formData as $key => $value) {
-            $formData[$key] = sanitize($_POST[$key] ?? '');
-        }
-        
-        $password = $_POST['password'] ?? '';
-        $confirmPassword = $_POST['confirm_password'] ?? '';
+    $name = clean_str($_POST['name'] ?? '');
+    $email = strtolower(clean_str($_POST['email'] ?? ''));
+    $password = (string) ($_POST['password'] ?? '');
+    $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
-        // Validation
-        if (empty($formData['first_name']) || strlen($formData['first_name']) < 2) {
-            $errors['first_name'] = 'First name must be at least 2 characters.';
-        }
-        if (empty($formData['last_name']) || strlen($formData['last_name']) < 2) {
-            $errors['last_name'] = 'Last name must be at least 2 characters.';
-        }
-        if (empty($formData['email']) || !filter_var($formData['email'], FILTER_VALIDATE_EMAIL)) {
-            $errors['email'] = 'Valid email is required.';
-        } else {
-            // Check uniqueness
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-            $stmt->execute([$formData['email']]);
-            if ($stmt->fetch()) {
-                $errors['email'] = 'Email is already registered.';
-            }
-        }
+    $missing = missing_fields(['name' => $name, 'email' => $email, 'password' => $password], ['name', 'email', 'password']);
+    if ($missing) {
+        $errors[] = 'Please fill in all fields.';
+    }
+    if ($email !== '' && !is_valid_email($email)) {
+        $errors[] = 'Please enter a valid email address.';
+    }
+    if (strlen($password) < 8) {
+        $errors[] = 'Password must be at least 8 characters.';
+    }
+    if ($password !== $confirmPassword) {
+        $errors[] = 'Passwords do not match.';
+    }
 
-        if (empty($password) || strlen($password) < 8 || !preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
-            $errors['password'] = 'Password must be at least 8 characters long, contain 1 uppercase letter and 1 number.';
+    if (!$errors) {
+        $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+        $stmt->execute([$email]);
+        if ($stmt->fetch()) {
+            $errors[] = 'An account with that email already exists.';
         }
-        if ($password !== $confirmPassword) {
-            $errors['confirm_password'] = 'Passwords do not match.';
-        }
-        if (!empty($formData['phone']) && !preg_match('/^[0-9\+\-\s]+$/', $formData['phone'])) {
-            $errors['phone'] = 'Phone number can only contain numbers, spaces, and + or - signs.';
-        }
+    }
 
-        $photoFilename = null;
-        if (empty($errors)) {
-            // Handle photo upload if present
-            if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === UPLOAD_ERR_OK) {
-                $uploadedFile = uploadFile($_FILES['profile_photo'], 'profiles');
-                if ($uploadedFile) {
-                    $photoFilename = $uploadedFile;
-                } else {
-                    $errors['profile_photo'] = 'Failed to upload photo. Ensure it is a valid image (max 2MB).';
-                }
-            }
-        }
+    if (!$errors) {
+        try {
+            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare('
+                INSERT INTO users (name, email, password_hash)
+                VALUES (?, ?, ?)
+                RETURNING id
+            ');
+            $stmt->execute([$name, $email, $passwordHash]);
+            $newUserId = (int) $stmt->fetchColumn();
 
-        // Insert to DB if no errors
-        if (empty($errors)) {
-            $hash = password_hash($password, PASSWORD_DEFAULT);
-            
-            $stmt = $pdo->prepare("INSERT INTO users (first_name, last_name, email, password_hash, phone, city, country, additional_info, profile_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            
-            $success = $stmt->execute([
-                $formData['first_name'], $formData['last_name'], $formData['email'], 
-                $hash, $formData['phone'] ?: null, $formData['city'] ?: null, 
-                $formData['country'] ?: null, $formData['additional_info'] ?: null, $photoFilename
-            ]);
-
-            if ($success) {
-                login($formData['email'], $password);
-                setFlash('success', 'Registration successful! Welcome to GlobeTrotter.');
-                redirect('dashboard.php');
-            } else {
-                $errors['general'] = 'Registration failed. Please try again.';
-            }
+            login_user($newUserId);
+            header('Location: /dashboard.php');
+            exit;
+        } catch (PDOException $e) {
+            error_log('[GlobeTrotter] register.php insert failed: ' . $e->getMessage());
+            $errors[] = 'An account with that email already exists.';
         }
     }
 }
+require_once __DIR__ . '/includes/header.php';
 ?>
-
 <div class="auth-page">
     <div class="container d-flex justify-content-center">
         <div class="auth-card register-card">

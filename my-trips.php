@@ -1,27 +1,23 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
-requireLogin();
 
-$pdo = DB::getInstance();
-$userId = $_SESSION['user_id'];
+$userId = require_login_page();
 
-// Fetch all trips for user
-$tripsStmt = $pdo->prepare("SELECT * FROM trips WHERE user_id = ? ORDER BY start_date DESC");
-$tripsStmt->execute([$userId]);
-$myTrips = $tripsStmt->fetchAll();
-
-// Group trips by status for UI convenience
-$tripsByStatus = [
-    'upcoming' => [],
-    'ongoing' => [],
-    'completed' => []
-];
-
-foreach ($myTrips as $trip) {
-    $tripsByStatus[$trip['status']][] = $trip;
-}
-
-// Data is now ready for the UI team:
-// $tripsByStatus['upcoming'], $tripsByStatus['ongoing'], $tripsByStatus['completed']
+$stmt = $pdo->prepare('
+    SELECT
+        t.id, t.name, t.start_date, t.end_date, t.description, t.cover_photo,
+        t.is_public, t.share_slug,
+        COUNT(DISTINCT s.id) AS stop_count,
+        COUNT(DISTINCT s.city_id) AS destination_count,
+        (t.end_date < CURRENT_DATE) AS is_past
+    FROM trips t
+    LEFT JOIN stops s ON s.trip_id = t.id
+    WHERE t.user_id = ?
+    GROUP BY t.id
+    ORDER BY t.start_date DESC
+');
+$stmt->execute([$userId]);
+$trips = $stmt->fetchAll();
+require_once __DIR__ . '/includes/header.php';
 ?>
 <!-- UI HTML GOES HERE -->

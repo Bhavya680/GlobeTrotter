@@ -1,94 +1,70 @@
 <?php
-// ── Bootstrap ──────────────────────────────────────────────────────────────
-$pageTitle        = 'Dashboard — GlobeTrotter';
-$loadDashboardCSS = true;
 require_once __DIR__ . '/includes/auth.php';
-requireLogin();
 
-$pdo    = DB::getInstance();
-$userId = (int) $_SESSION['user_id'];
+$userId = require_login_page();
+$user = current_user();
 
-// ── 1. Auto-update trip statuses based on dates ────────────────────────────
-$allTrips = $pdo->prepare("SELECT id, start_date, end_date, status FROM trips WHERE user_id = ?");
-$allTrips->execute([$userId]);
-foreach ($allTrips->fetchAll() as $t) {
-    $calculated = getTripStatus($t['start_date'], $t['end_date']);
-    if ($calculated !== $t['status']) {
-        $upd = $pdo->prepare("UPDATE trips SET status = ? WHERE id = ?");
-        $upd->execute([$calculated, $t['id']]);
-    }
-}
-
-// ── 2. Stats ───────────────────────────────────────────────────────────────
-$statsStmt = $pdo->prepare("
-    SELECT
-        COUNT(*)                                                            AS total_trips,
-        COUNT(CASE WHEN status = 'upcoming'  THEN 1 END)                   AS upcoming_count,
-        COUNT(CASE WHEN status = 'ongoing'   THEN 1 END)                   AS ongoing_count,
-        COUNT(CASE WHEN status = 'completed' THEN 1 END)                   AS completed_count
-    FROM trips WHERE user_id = ?
-");
-$statsStmt->execute([$userId]);
-$stats = $statsStmt->fetch();
-
-// Countries visited = distinct countries from cities in completed trips
-$countriesStmt = $pdo->prepare("
-    SELECT COUNT(DISTINCT c.country) AS countries_visited
+$upcomingStmt = $pdo->prepare('
+    SELECT t.id, t.name, t.start_date, t.end_date, t.cover_photo,
+           COUNT(DISTINCT s.city_id) AS destination_count
     FROM trips t
-    JOIN trip_stops ts ON ts.trip_id = t.id
-    JOIN cities c      ON c.id = ts.city_id
-    WHERE t.user_id = ? AND t.status = 'completed'
-");
-$countriesStmt->execute([$userId]);
-$countriesRow       = $countriesStmt->fetch();
-$countriesVisited   = (int) $countriesRow['countries_visited'];
-
-// ── 3. Cities grouped by region (for region cards) ────────────────────────
-$regionsStmt = $pdo->query("
-    SELECT region, COUNT(*) AS city_count
-    FROM cities
-    WHERE region IS NOT NULL
-    GROUP BY region
-    ORDER BY region
-");
-$regionCounts = [];
-foreach ($regionsStmt->fetchAll() as $row) {
-    $regionCounts[$row['region']] = (int) $row['city_count'];
-}
-
-$regions = [
-    ['key' => 'Asia',        'label' => 'Asia',        'class' => 'region-asia'],
-    ['key' => 'Europe',      'label' => 'Europe',      'class' => 'region-europe'],
-    ['key' => 'Americas',    'label' => 'Americas',    'class' => 'region-americas'],
-    ['key' => 'Africa',      'label' => 'Africa',      'class' => 'region-africa'],
-    ['key' => 'Middle East', 'label' => 'Middle East', 'class' => 'region-middleeast'],
-];
-
-// ── 4. Last 4 trips with stop count ───────────────────────────────────────
-$tripsStmt = $pdo->prepare("
-    SELECT t.*,
-           COUNT(ts.id) AS stop_count
-    FROM trips t
-    LEFT JOIN trip_stops ts ON ts.trip_id = t.id
-    WHERE t.user_id = ?
+    LEFT JOIN stops s ON s.trip_id = t.id
+    WHERE t.user_id = ? AND t.end_date >= CURRENT_DATE
     GROUP BY t.id
+    ORDER BY t.start_date ASC
+    LIMIT 5
+');
+$upcomingStmt->execute([$userId]);
+$upcomingTrips = $upcomingStmt->fetchAll();
+
+$recentStmt = $pdo->prepare('
+    SELECT t.id, t.name, t.start_date, t.end_date, t.cover_photo
+    FROM trips t
+    WHERE t.user_id = ?
     ORDER BY t.created_at DESC
-    LIMIT 4
-");
-$tripsStmt->execute([$userId]);
-$userTrips = $tripsStmt->fetchAll();
+    LIMIT 5
+');
+$recentStmt->execute([$userId]);
+$recentTrips = $recentStmt->fetchAll();
 
-// ── 5. Fetch first name for hero ──────────────────────────────────────────
-$firstName = htmlspecialchars($_SESSION['first_name'] ?? 'Traveller');
+$recommendedStmt = $pdo->prepare('
+    SELECT c.id, c.name, c.country, c.cost_index, c.popularity, c.image_url
+    FROM cities c
+    WHERE c.id NOT IN (
+        SELECT DISTINCT s.city_id
+        FROM stops s
+        JOIN trips t ON t.id = s.trip_id
+        WHERE t.user_id = ?
+    )
+    ORDER BY c.popularity DESC
+    LIMIT 6
+');
+$recommendedStmt->execute([$userId]);
+$recommendedCities = $recommendedStmt->fetchAll();
 
-// ── Gradient placeholder map ──────────────────────────────────────────────
-$gradients   = ['trip-gradient-1', 'trip-gradient-2', 'trip-gradient-3', 'trip-gradient-4'];
-$gradIcons   = ['fa-plane-departure', 'fa-mountain-sun', 'fa-sailboat', 'fa-map-location-dot'];
-
-// ── Include header ─────────────────────────────────────────────────────────
+$budgetStmt = $pdo->prepare('
+    SELECT
+        COALESCE(SUM(b.amount), 0) AS manual_total,
+        (
+            SELECT COALESCE(SUM(COALESCE(sa.cost_override, a.cost)), 0)
+            FROM stop_activities sa
+            JOIN activities a ON a.id = sa.activity_id
+            JOIN stops s ON s.id = sa.stop_id
+            JOIN trips t2 ON t2.id = s.trip_id
+            WHERE t2.user_id = ?
+        ) AS activities_total
+    FROM budget_items b
+    JOIN trips t ON t.id = b.trip_id
+    WHERE t.user_id = ?
+');
+$budgetStmt->execute([$userId, $userId]);
+$budgetRow = $budgetStmt->fetch();
+$budgetHighlights = [
+    'total_planned' => round((float) $budgetRow['manual_total'] + (float) $budgetRow['activities_total'], 2),
+    'trip_count' => (int) $pdo->query('SELECT COUNT(*) FROM trips WHERE user_id = ' . (int) $userId)->fetchColumn(),
+];
 require_once __DIR__ . '/includes/header.php';
 ?>
-
 <!-- ======================================================================
      HERO SECTION
      ====================================================================== -->

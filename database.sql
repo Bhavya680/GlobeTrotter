@@ -1,187 +1,154 @@
--- PostgreSQL Schema for GlobeTrotter
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    phone VARCHAR(20),
-    city VARCHAR(100),
-    country VARCHAR(100),
-    profile_photo VARCHAR(255),
-    additional_info TEXT,
-    role VARCHAR(10) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS trips (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    trip_name VARCHAR(255) NOT NULL,
-    description TEXT,
-    start_date DATE,
-    end_date DATE,
-    cover_photo VARCHAR(255),
-    status VARCHAR(20) DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'ongoing', 'completed')),
-    visibility VARCHAR(20) DEFAULT 'private' CHECK (visibility IN ('public', 'private')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS cities (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(150) NOT NULL,
-    country VARCHAR(100),
-    region VARCHAR(100),
-    cost_index DECIMAL(5,2),
-    popularity_score INT DEFAULT 0,
-    description TEXT,
-    image_url VARCHAR(255)
-);
-
-CREATE TABLE IF NOT EXISTS activities (
-    id SERIAL PRIMARY KEY,
-    city_id INT REFERENCES cities(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    category VARCHAR(50) CHECK (category IN ('sightseeing','food','adventure','culture','shopping','wellness')),
-    cost DECIMAL(10,2) DEFAULT 0.00,
-    duration_hours DECIMAL(4,1),
-    image_url VARCHAR(255)
-);
-
-CREATE TABLE IF NOT EXISTS trip_stops (
-    id SERIAL PRIMARY KEY,
-    trip_id INT REFERENCES trips(id) ON DELETE CASCADE,
-    city_id INT REFERENCES cities(id),
-    arrival_date DATE,
-    departure_date DATE,
-    order_index INT DEFAULT 0,
-    notes TEXT,
-    budget_for_stop DECIMAL(10,2) DEFAULT 0.00
-);
-
-CREATE TABLE IF NOT EXISTS trip_activities (
-    id SERIAL PRIMARY KEY,
-    trip_stop_id INT REFERENCES trip_stops(id) ON DELETE CASCADE,
-    activity_id INT REFERENCES activities(id),
-    scheduled_date DATE,
-    scheduled_time TIME,
-    custom_cost DECIMAL(10,2),
-    notes TEXT
-);
-
-CREATE TABLE IF NOT EXISTS trip_budget (
-    id SERIAL PRIMARY KEY,
-    trip_id INT UNIQUE REFERENCES trips(id) ON DELETE CASCADE,
-    transport_budget DECIMAL(10,2) DEFAULT 0.00,
-    stay_budget DECIMAL(10,2) DEFAULT 0.00,
-    activities_budget DECIMAL(10,2) DEFAULT 0.00,
-    meals_budget DECIMAL(10,2) DEFAULT 0.00,
-    misc_budget DECIMAL(10,2) DEFAULT 0.00,
-    total_budget DECIMAL(10,2) GENERATED ALWAYS AS (transport_budget + stay_budget + activities_budget + meals_budget + misc_budget) STORED,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS community_posts (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    trip_id INT REFERENCES trips(id) ON DELETE SET NULL,
-    title VARCHAR(255),
-    content TEXT NOT NULL,
-    likes_count INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS community_likes (
-    id SERIAL PRIMARY KEY,
-    post_id INT REFERENCES community_posts(id) ON DELETE CASCADE,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE (post_id, user_id)
-);
-
-CREATE TABLE IF NOT EXISTS saved_destinations (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    city_id INT REFERENCES cities(id) ON DELETE CASCADE,
-    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (user_id, city_id)
-);
-
--- Triggers for updated_at
-CREATE OR REPLACE FUNCTION update_updated_at_column()
+CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
+    NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_users_updated_at
+CREATE TABLE users (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(120) NOT NULL,
+    email           VARCHAR(190) NOT NULL UNIQUE,
+    password_hash   VARCHAR(255) NOT NULL,
+    profile_photo   VARCHAR(255),
+    language_pref   VARCHAR(10) NOT NULL DEFAULT 'en',
+    is_admin        BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TRIGGER trg_users_updated_at
     BEFORE UPDATE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
-CREATE TRIGGER update_trip_budget_updated_at
-    BEFORE UPDATE ON trip_budget
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+CREATE INDEX idx_users_email ON users (email);
 
--- Seed Data
+CREATE TABLE cities (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(120) NOT NULL,
+    country         VARCHAR(120) NOT NULL,
+    region          VARCHAR(120),
+    cost_index      NUMERIC(6,2) NOT NULL DEFAULT 0,
+    popularity      INT NOT NULL DEFAULT 0,
+    image_url       VARCHAR(255),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-INSERT INTO users (first_name, last_name, email, password_hash, role) VALUES 
-('Admin', 'User', 'admin@globetrotter.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin'),
-('Test', 'User1', 'user1@test.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user'),
-('Test', 'User2', 'user2@test.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user');
+CREATE INDEX idx_cities_name ON cities (name);
+CREATE INDEX idx_cities_country ON cities (country);
+CREATE INDEX idx_cities_popularity ON cities (popularity DESC);
 
-INSERT INTO cities (name, country, region, cost_index) VALUES
-('Paris', 'France', 'Europe', 8.5),
-('Tokyo', 'Japan', 'Asia', 7.2),
-('New York', 'USA', 'Americas', 9.0),
-('Bali', 'Indonesia', 'Asia', 4.5),
-('Rome', 'Italy', 'Europe', 7.8),
-('Bangkok', 'Thailand', 'Asia', 3.5),
-('Dubai', 'UAE', 'Middle East', 8.0),
-('Cape Town', 'South Africa', 'Africa', 5.0);
+CREATE TABLE activities (
+    id              SERIAL PRIMARY KEY,
+    city_id         INT NOT NULL REFERENCES cities(id) ON DELETE CASCADE,
+    name            VARCHAR(160) NOT NULL,
+    description     TEXT,
+    category        VARCHAR(20) NOT NULL DEFAULT 'other'
+                        CHECK (category IN ('sightseeing','food','adventure','culture','relaxation','other')),
+    cost            NUMERIC(10,2) NOT NULL DEFAULT 0,
+    duration_hours  NUMERIC(4,1) NOT NULL DEFAULT 1,
+    image_url       VARCHAR(255),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-INSERT INTO activities (city_id, name, category, cost, duration_hours) VALUES
-(1, 'Eiffel Tower Visit', 'sightseeing', 30.00, 3.0),
-(1, 'Louvre Museum', 'culture', 20.00, 4.0),
-(1, 'Seine River Cruise', 'sightseeing', 15.00, 1.5),
-(2, 'Sushi Making Class', 'food', 80.00, 2.5),
-(2, 'Mount Fuji Day Trip', 'adventure', 100.00, 10.0),
-(2, 'Akihabara Shopping', 'shopping', 0.00, 3.0),
-(3, 'Statue of Liberty', 'sightseeing', 25.00, 4.0),
-(3, 'Broadway Show', 'culture', 150.00, 3.0),
-(3, 'Central Park Bike Tour', 'adventure', 35.00, 2.0),
-(4, 'Ubud Monkey Forest', 'sightseeing', 5.00, 2.0),
-(4, 'Balinese Massage', 'wellness', 20.00, 1.5),
-(4, 'Mount Batur Sunrise Trek', 'adventure', 45.00, 6.0),
-(5, 'Colosseum Guided Tour', 'sightseeing', 35.00, 2.5),
-(5, 'Vatican Museums', 'culture', 40.00, 4.0),
-(5, 'Pasta Making Class', 'food', 60.00, 3.0),
-(6, 'Grand Palace Tour', 'culture', 15.00, 3.0),
-(6, 'Chatuchak Weekend Market', 'shopping', 0.00, 4.0),
-(6, 'Thai Street Food Tour', 'food', 30.00, 3.5),
-(7, 'Burj Khalifa Observation Deck', 'sightseeing', 45.00, 2.0),
-(7, 'Desert Safari', 'adventure', 70.00, 6.0),
-(7, 'Dubai Mall Shopping', 'shopping', 0.00, 5.0),
-(8, 'Table Mountain Cable Car', 'sightseeing', 25.00, 3.0),
-(8, 'Cape Point Tour', 'adventure', 50.00, 8.0),
-(8, 'Wine Tasting in Stellenbosch', 'food', 40.00, 5.0);
+CREATE INDEX idx_activities_city ON activities (city_id);
+CREATE INDEX idx_activities_category ON activities (category);
+CREATE INDEX idx_activities_cost ON activities (cost);
 
-INSERT INTO trips (user_id, trip_name, start_date, end_date, status, visibility) VALUES
-(2, 'Summer in Europe', '2027-06-01', '2027-06-15', 'upcoming', 'private'),
-(2, 'Bali Retreat', '2023-09-10', '2023-09-20', 'completed', 'public');
+CREATE TABLE trips (
+    id              SERIAL PRIMARY KEY,
+    user_id         INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name            VARCHAR(160) NOT NULL,
+    start_date      DATE NOT NULL,
+    end_date        DATE NOT NULL,
+    description     TEXT,
+    cover_photo     VARCHAR(255),
+    is_public       BOOLEAN NOT NULL DEFAULT FALSE,
+    share_slug      VARCHAR(40) UNIQUE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_trip_dates CHECK (end_date >= start_date)
+);
 
-INSERT INTO trip_stops (trip_id, city_id, arrival_date, departure_date, order_index) VALUES
-(1, 1, '2027-06-01', '2027-06-07', 0),
-(1, 5, '2027-06-07', '2027-06-15', 1),
-(2, 4, '2023-09-10', '2023-09-20', 0);
+CREATE TRIGGER trg_trips_updated_at
+    BEFORE UPDATE ON trips
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
-INSERT INTO trip_activities (trip_stop_id, activity_id, scheduled_date) VALUES
-(1, 1, '2027-06-02'),
-(1, 2, '2027-06-03'),
-(2, 13, '2027-06-08'),
-(3, 11, '2023-09-12');
+CREATE INDEX idx_trips_user ON trips (user_id);
+CREATE INDEX idx_trips_share_slug ON trips (share_slug);
+
+CREATE TABLE stops (
+    id              SERIAL PRIMARY KEY,
+    trip_id         INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    city_id         INT NOT NULL REFERENCES cities(id) ON DELETE RESTRICT,
+    start_date      DATE NOT NULL,
+    end_date        DATE NOT NULL,
+    sort_order      INT NOT NULL DEFAULT 0,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_stop_dates CHECK (end_date >= start_date)
+);
+
+CREATE TRIGGER trg_stops_updated_at
+    BEFORE UPDATE ON stops
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX idx_stops_trip ON stops (trip_id, sort_order);
+CREATE INDEX idx_stops_city ON stops (city_id);
+
+CREATE TABLE stop_activities (
+    id              SERIAL PRIMARY KEY,
+    stop_id         INT NOT NULL REFERENCES stops(id) ON DELETE CASCADE,
+    activity_id     INT NOT NULL REFERENCES activities(id) ON DELETE RESTRICT,
+    scheduled_date  DATE NOT NULL,
+    scheduled_time  TIME,
+    cost_override   NUMERIC(10,2),
+    notes           TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_stop_activities_stop ON stop_activities (stop_id, scheduled_date);
+CREATE INDEX idx_stop_activities_activity ON stop_activities (activity_id);
+
+CREATE TABLE budget_items (
+    id              SERIAL PRIMARY KEY,
+    trip_id         INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    stop_id         INT REFERENCES stops(id) ON DELETE CASCADE,
+    category        VARCHAR(20) NOT NULL
+                        CHECK (category IN ('transport','stay','meals','other')),
+    description     VARCHAR(200),
+    amount          NUMERIC(10,2) NOT NULL DEFAULT 0,
+    spent_on        DATE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_budget_items_trip ON budget_items (trip_id);
+CREATE INDEX idx_budget_items_stop ON budget_items (stop_id);
+
+INSERT INTO cities (name, country, region, cost_index, popularity, image_url) VALUES
+('Paris',       'France',       'Europe',        78.50, 98, NULL),
+('Tokyo',       'Japan',        'Asia',          72.00, 95, NULL),
+('Bali',        'Indonesia',    'Asia',          35.00, 90, NULL),
+('New York',    'USA',          'North America', 95.00, 92, NULL),
+('Barcelona',   'Spain',        'Europe',        60.00, 88, NULL),
+('Bangkok',     'Thailand',     'Asia',          28.00, 85, NULL),
+('Rome',        'Italy',        'Europe',        70.00, 89, NULL),
+('Cape Town',   'South Africa', 'Africa',        45.00, 75, NULL);
+
+INSERT INTO activities (city_id, name, description, category, cost, duration_hours, image_url) VALUES
+(1, 'Louvre Museum Tour',        'Guided tour of the Louvre highlights.',        'culture',      35.00, 3, NULL),
+(1, 'Seine River Cruise',        'Evening cruise along the Seine.',              'relaxation',    25.00, 1.5, NULL),
+(1, 'Eiffel Tower Summit Visit', 'Skip-the-line access to the top level.',       'sightseeing',   45.00, 2, NULL),
+(2, 'Shibuya Food Crawl',        'Street food tasting tour through Shibuya.',    'food',          40.00, 3, NULL),
+(2, 'TeamLab Digital Art',       'Immersive digital art museum.',                'culture',       32.00, 2, NULL),
+(3, 'Ubud Rice Terrace Trek',    'Guided walk through the Tegallalang terraces.', 'adventure',     20.00, 4, NULL),
+(3, 'Balinese Cooking Class',    'Hands-on class with a local chef.',            'food',          30.00, 3, NULL),
+(4, 'Broadway Show',             'Evening ticket to a Broadway production.',     'culture',       120.00, 2.5, NULL),
+(4, 'Central Park Bike Tour',     'Guided cycling tour through Central Park.',    'sightseeing',   28.00, 2, NULL);
+
+-- password: Admin@123
+INSERT INTO users (name, email, password_hash, is_admin) VALUES
+('Admin User', 'admin@globetrotter.dev', '$2y$10$gdNM3dX3//fjJJ6S/DtMxO6Ff5LsgEuFZ7PxMP6JHOgQWnzjsEsiC', TRUE);

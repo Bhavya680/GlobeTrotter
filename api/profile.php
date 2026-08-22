@@ -1,88 +1,110 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
-requireLogin();
 
-$pdo = DB::getInstance();
-$user_id = $_SESSION['user_id'];
+$userId = require_login();
 $method = $_SERVER['REQUEST_METHOD'];
 
-if ($method === 'GET') {
-    $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, phone, city, country, profile_photo, additional_info, role, created_at FROM users WHERE id = ?");
-    $stmt->execute([$user_id]);
-    $user = $stmt->fetch();
-    jsonResponse(['success' => true, 'data' => $user]);
-} 
-elseif ($method === 'POST') {
-    // Check CSRF token for POST
-    if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
-        jsonResponse(['success' => false, 'message' => 'Invalid CSRF token'], 403);
-    }
-
-    $action = $_GET['action'] ?? 'update';
-
-    if ($action === 'change_password') {
-        $current = $_POST['current_password'] ?? '';
-        $new = $_POST['new_password'] ?? '';
-        
-        $stmt = $pdo->prepare("SELECT password_hash FROM users WHERE id = ?");
-        $stmt->execute([$user_id]);
-        $user = $stmt->fetch();
-
-        if (password_verify($current, $user['password_hash'])) {
-            if (strlen($new) >= 8) {
-                $hash = password_hash($new, PASSWORD_DEFAULT);
-                $updateStmt = $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
-                $updateStmt->execute([$hash, $user_id]);
-                jsonResponse(['success' => true, 'message' => 'Password updated successfully']);
-            } else {
-                jsonResponse(['success' => false, 'message' => 'New password must be at least 8 characters']);
-            }
-        } else {
-            jsonResponse(['success' => false, 'message' => 'Incorrect current password'], 401);
-        }
-    } 
-    elseif ($action === 'update') {
-        $first_name = sanitize($_POST['first_name'] ?? '');
-        $last_name = sanitize($_POST['last_name'] ?? '');
-        $phone = sanitize($_POST['phone'] ?? '');
-        $city = sanitize($_POST['city'] ?? '');
-        $country = sanitize($_POST['country'] ?? '');
-        $additional_info = sanitize($_POST['additional_info'] ?? '');
-        
-        if (empty($first_name) || empty($last_name)) {
-            jsonResponse(['success' => false, 'message' => 'First and last name are required']);
-        }
-
-        $profile_photo = null;
-        if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === UPLOAD_ERR_OK) {
-            $profile_photo = uploadFile($_FILES['profile_photo'], 'profiles');
-        }
-
-        if ($profile_photo) {
-            $stmt = $pdo->prepare("UPDATE users SET first_name=?, last_name=?, phone=?, city=?, country=?, additional_info=?, profile_photo=? WHERE id=?");
-            $stmt->execute([$first_name, $last_name, $phone, $city, $country, $additional_info, $profile_photo, $user_id]);
-        } else {
-            $stmt = $pdo->prepare("UPDATE users SET first_name=?, last_name=?, phone=?, city=?, country=?, additional_info=? WHERE id=?");
-            $stmt->execute([$first_name, $last_name, $phone, $city, $country, $additional_info, $user_id]);
-        }
-
-        jsonResponse(['success' => true, 'message' => 'Profile updated successfully']);
-    }
-} 
-elseif ($method === 'DELETE') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    if (!validateCsrfToken($input['csrf_token'] ?? '')) {
-        jsonResponse(['success' => false, 'message' => 'Invalid CSRF token'], 403);
-    }
-    
-    $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
-    $stmt->execute([$user_id]);
-    
-    $_SESSION = [];
-    session_destroy();
-    
-    jsonResponse(['success' => true, 'message' => 'Account deleted']);
-} else {
-    jsonResponse(['success' => false, 'message' => 'Method not allowed'], 405);
+switch ($method) {
+    case 'GET':
+        handle_get($pdo, $userId);
+        break;
+    case 'PUT':
+    case 'POST':
+        handle_update($pdo, $userId);
+        break;
+    case 'DELETE':
+        handle_delete($pdo, $userId);
+        break;
+    default:
+        json_error('Method not allowed', 405);
 }
-?>
+
+function handle_get(PDO $pdo, int $userId): void {
+    $stmt = $pdo->prepare('
+        SELECT id, name, email, profile_photo, language_pref, is_admin, created_at
+        FROM users WHERE id = ?
+    ');
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch();
+
+    if (!$user) {
+        json_error('User not found', 404);
+    }
+
+    json_success($user);
+}
+
+function handle_update(PDO $pdo, int $userId): void {
+    $body = !empty($_FILES) ? $_POST : get_request_body();
+
+    $fields = [];
+    $params = [];
+
+    if (isset($body['name']) && trim($body['name']) !== '') {
+        $fields[] = 'name = ?';
+        $params[] = clean_str($body['name']);
+    }
+
+    if (isset($body['language_pref']) && trim($body['language_pref']) !== '') {
+        $fields[] = 'language_pref = ?';
+        $params[] = clean_str($body['language_pref']);
+    }
+
+    if (isset($body['email']) && trim($body['email']) !== '') {
+        $newEmail = strtolower(clean_str($body['email']));
+        if (!is_valid_email($newEmail)) {
+            json_error('Invalid email address');
+        }
+        $check = $pdo->prepare('SELECT id FROM users WHERE email = ? AND id != ?');
+        $check->execute([$newEmail, $userId]);
+        if ($check->fetch()) {
+            json_error('That email is already in use by another account');
+        }
+        $fields[] = 'email = ?';
+        $params[] = $newEmail;
+    }
+
+    if (isset($body['new_password']) && $body['new_password'] !== '') {
+        if (strlen($body['new_password']) < 8) {
+            json_error('New password must be at least 8 characters');
+        }
+        $current = $pdo->prepare('SELECT password_hash FROM users WHERE id = ?');
+        $current->execute([$userId]);
+        $row = $current->fetch();
+        if (!$row || !password_verify((string) ($body['current_password'] ?? ''), $row['password_hash'])) {
+            json_error('Current password is incorrect', 403);
+        }
+        $fields[] = 'password_hash = ?';
+        $params[] = password_hash($body['new_password'], PASSWORD_DEFAULT);
+    }
+
+    try {
+        if (!empty($_FILES['profile_photo'])) {
+            $photoUrl = handle_image_upload('profile_photo', 'profiles');
+            if ($photoUrl !== null) {
+                $fields[] = 'profile_photo = ?';
+                $params[] = $photoUrl;
+            }
+        }
+    } catch (RuntimeException $e) {
+        json_error($e->getMessage());
+    }
+
+    if (!$fields) {
+        json_error('No valid fields to update');
+    }
+
+    $params[] = $userId;
+    $sql = 'UPDATE users SET ' . implode(', ', $fields) . ' WHERE id = ?';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    handle_get($pdo, $userId);
+}
+
+function handle_delete(PDO $pdo, int $userId): void {
+    $stmt = $pdo->prepare('DELETE FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    logout_user();
+    json_success(['deleted' => true]);
+}

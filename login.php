@@ -1,41 +1,43 @@
 <?php
-require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/auth.php';
 
-// If already logged in, redirect to dashboard
-if (isLoggedIn()) {
-    redirect('dashboard.php');
+if (is_logged_in()) {
+    header('Location: /dashboard.php');
+    exit;
 }
 
 $errors = [];
 $email = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
-        $errors['login'] = "Invalid CSRF token. Please try again.";
+    $email = strtolower(clean_str($_POST['email'] ?? ''));
+    $password = (string) ($_POST['password'] ?? '');
+
+    if ($email === '' || $password === '') {
+        $errors[] = 'Please enter your email and password.';
     } else {
-        $email = sanitize($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
+        $stmt = $pdo->prepare('SELECT id, password_hash FROM users WHERE email = ?');
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
 
-        if (empty($email)) {
-            $errors['email'] = 'Email is required.';
-        }
-        if (empty($password)) {
-            $errors['password'] = 'Password is required.';
-        }
+        if (!$user || !password_verify($password, $user['password_hash'])) {
+            $errors[] = 'Invalid email or password.';
+        } else {
+            login_user((int) $user['id']);
 
-        if (empty($errors)) {
-            if (login($email, $password)) {
-                setFlash('success', 'Welcome back!');
-                redirect('dashboard.php');
-            } else {
-                $errors['login'] = 'Invalid email or password.';
+            if (password_needs_rehash($user['password_hash'], PASSWORD_DEFAULT)) {
+                $newHash = password_hash($password, PASSWORD_DEFAULT);
+                $update = $pdo->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+                $update->execute([$newHash, $user['id']]);
             }
+
+            header('Location: /dashboard.php');
+            exit;
         }
     }
 }
+require_once __DIR__ . '/includes/header.php';
 ?>
-
 <div class="auth-page">
     <div class="container d-flex justify-content-center">
         <div class="auth-card">

@@ -1,115 +1,114 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-function sanitize($input) {
-    return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
-}
-
-function redirect($url) {
-    header("Location: " . $url);
-    exit;
-}
-
-function formatDate($date, $format = 'M j, Y') {
-    return date($format, strtotime($date));
-}
-
-function calculateTripDuration($start, $end) {
-    $datetime1 = new DateTime($start);
-    $datetime2 = new DateTime($end);
-    $interval = $datetime1->diff($datetime2);
-    return $interval->days + 1; // Inclusive of start day
-}
-
-function getTripStatus($start_date, $end_date) {
-    $today = date('Y-m-d');
-    if ($today < $start_date) {
-        return 'upcoming';
-    } elseif ($today > $end_date) {
-        return 'completed';
-    } else {
-        return 'ongoing';
-    }
-}
-
-function uploadFile($file, $destinationFolder) {
-    if ($file['error'] !== UPLOAD_ERR_OK) {
-        return false;
-    }
-    
-    if ($file['size'] > MAX_FILE_SIZE) {
-        return false; // File too large
-    }
-
-    $mime = mime_content_type($file['tmp_name']);
-    if (!in_array($mime, ALLOWED_FILE_TYPES)) {
-        return false; // Invalid file type
-    }
-
-    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-    $filename = uniqid() . '.' . $ext;
-    
-    // Ensure directory exists
-    $fullDestPath = UPLOAD_PATH . $destinationFolder;
-    if (!is_dir($fullDestPath)) {
-        mkdir($fullDestPath, 0755, true);
-    }
-    
-    $targetPath = $fullDestPath . '/' . $filename;
-
-    if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-        return $filename;
-    }
-    return false;
-}
-
-function paginate($total, $per_page, $current_page) {
-    $total_pages = ceil($total / $per_page);
-    return [
-        'total' => $total,
-        'per_page' => $per_page,
-        'current_page' => $current_page,
-        'total_pages' => $total_pages,
-        'offset' => ($current_page - 1) * $per_page
-    ];
-}
-
-function jsonResponse($data, $status = 200) {
+function json_response(array $payload, int $status = 200): void {
     http_response_code($status);
     header('Content-Type: application/json');
-    echo json_encode($data);
+    echo json_encode($payload);
     exit;
 }
 
-function setFlash($type, $message) {
-    $_SESSION['flash'] = [
-        'type' => $type,
-        'message' => $message
-    ];
+function json_success($data = null, int $status = 200): void {
+    json_response(['success' => true, 'data' => $data], $status);
 }
 
-function getFlash() {
-    if (isset($_SESSION['flash'])) {
-        $flash = $_SESSION['flash'];
-        unset($_SESSION['flash']);
-        return $flash;
-    }
-    return null;
+function json_error(string $message, int $status = 400): void {
+    json_response(['success' => false, 'error' => $message], $status);
 }
 
-function generateCsrfToken() {
-    if (empty($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+function get_request_body(): array {
+    $raw = file_get_contents('php://input');
+    if ($raw !== false && $raw !== '') {
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
     }
-    return $_SESSION['csrf_token'];
+    return $_POST;
 }
 
-function validateCsrfToken($token) {
-    if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
-        return false;
+function missing_fields(array $data, array $required): array {
+    $missing = [];
+    foreach ($required as $field) {
+        if (!array_key_exists($field, $data) || $data[$field] === '' || $data[$field] === null) {
+            $missing[] = $field;
+        }
     }
-    return true;
+    return $missing;
 }
-?>
+
+function is_valid_email(string $email): bool {
+    return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+}
+
+function is_valid_date(string $date): bool {
+    $d = DateTime::createFromFormat('Y-m-d', $date);
+    return $d && $d->format('Y-m-d') === $date;
+}
+
+function clean_str($value): string {
+    return trim(strip_tags((string) $value));
+}
+
+function generate_unique_slug(PDO $pdo, string $table = 'trips', string $column = 'share_slug', int $length = 8): string {
+    $alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    $maxIndex = strlen($alphabet) - 1;
+
+    for ($attempt = 0; $attempt < 5; $attempt++) {
+        $slug = '';
+        for ($i = 0; $i < $length; $i++) {
+            $slug .= $alphabet[random_int(0, $maxIndex)];
+        }
+
+        $stmt = $pdo->prepare("SELECT 1 FROM {$table} WHERE {$column} = ? LIMIT 1");
+        $stmt->execute([$slug]);
+        if (!$stmt->fetch()) {
+            return $slug;
+        }
+    }
+
+    return bin2hex(random_bytes(12));
+}
+
+function handle_image_upload(string $fieldName, string $subDir): ?string {
+    if (!isset($_FILES[$fieldName]) || $_FILES[$fieldName]['error'] === UPLOAD_ERR_NO_FILE) {
+        return null;
+    }
+
+    $file = $_FILES[$fieldName];
+
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('Upload failed (error code ' . $file['error'] . ')');
+    }
+
+    if ($file['size'] > MAX_UPLOAD_SIZE) {
+        throw new RuntimeException('Image exceeds the 5MB size limit');
+    }
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+
+    if (!in_array($mime, ALLOWED_IMAGE_TYPES, true)) {
+        throw new RuntimeException('Only JPEG, PNG, or WebP images are allowed');
+    }
+
+    $ext = match ($mime) {
+        'image/jpeg' => 'jpg',
+        'image/png'  => 'png',
+        'image/webp' => 'webp',
+        default      => 'bin',
+    };
+
+    $filename = bin2hex(random_bytes(16)) . '.' . $ext;
+    $destDir = UPLOAD_DIR . '/' . $subDir;
+
+    if (!is_dir($destDir) && !mkdir($destDir, 0755, true) && !is_dir($destDir)) {
+        throw new RuntimeException('Could not create upload directory');
+    }
+
+    $destPath = $destDir . '/' . $filename;
+    if (!move_uploaded_file($file['tmp_name'], $destPath)) {
+        throw new RuntimeException('Could not save uploaded file');
+    }
+
+    return UPLOAD_URL_BASE . '/' . $subDir . '/' . $filename;
+}

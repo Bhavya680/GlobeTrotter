@@ -1,8 +1,9 @@
 <?php
 // Database Credentials
 define('DB_HOST', 'localhost');
+define('DB_PORT', '5432');
 define('DB_NAME', 'globetrotter');
-define('DB_USER', 'root');
+define('DB_USER', 'postgres');
 define('DB_PASS', '');
 
 // Site Constants

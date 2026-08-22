@@ -1,8 +1,15 @@
-CREATE DATABASE IF NOT EXISTS globetrotter;
-USE globetrotter;
+-- PostgreSQL Schema for GlobeTrotter
+
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
 
 CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -12,27 +19,33 @@ CREATE TABLE IF NOT EXISTS users (
     country VARCHAR(100),
     profile_photo VARCHAR(255),
     additional_info TEXT,
-    role ENUM('user','admin') DEFAULT 'user',
+    role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at
+BEFORE UPDATE ON users
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TABLE IF NOT EXISTS trips (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     user_id INT,
     trip_name VARCHAR(255) NOT NULL,
     description TEXT,
     start_date DATE,
     end_date DATE,
     cover_photo VARCHAR(255),
-    status ENUM('upcoming','ongoing','completed') DEFAULT 'upcoming',
-    visibility ENUM('public','private') DEFAULT 'private',
+    status VARCHAR(20) DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'ongoing', 'completed')),
+    visibility VARCHAR(20) DEFAULT 'private' CHECK (visibility IN ('public', 'private')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS cities (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
     country VARCHAR(100),
     region VARCHAR(100),
@@ -43,11 +56,11 @@ CREATE TABLE IF NOT EXISTS cities (
 );
 
 CREATE TABLE IF NOT EXISTS activities (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     city_id INT,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    category ENUM('sightseeing','food','adventure','culture','shopping','wellness'),
+    category VARCHAR(50) CHECK (category IN ('sightseeing', 'food', 'adventure', 'culture', 'shopping', 'wellness')),
     cost DECIMAL(10,2) DEFAULT 0.00,
     duration_hours DECIMAL(4,1),
     image_url VARCHAR(255),
@@ -55,7 +68,7 @@ CREATE TABLE IF NOT EXISTS activities (
 );
 
 CREATE TABLE IF NOT EXISTS trip_stops (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     trip_id INT,
     city_id INT,
     arrival_date DATE,
@@ -68,7 +81,7 @@ CREATE TABLE IF NOT EXISTS trip_stops (
 );
 
 CREATE TABLE IF NOT EXISTS trip_activities (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     trip_stop_id INT,
     activity_id INT,
     scheduled_date DATE,
@@ -80,7 +93,7 @@ CREATE TABLE IF NOT EXISTS trip_activities (
 );
 
 CREATE TABLE IF NOT EXISTS trip_budget (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     trip_id INT UNIQUE,
     transport_budget DECIMAL(10,2) DEFAULT 0.00,
     stay_budget DECIMAL(10,2) DEFAULT 0.00,
@@ -88,12 +101,18 @@ CREATE TABLE IF NOT EXISTS trip_budget (
     meals_budget DECIMAL(10,2) DEFAULT 0.00,
     misc_budget DECIMAL(10,2) DEFAULT 0.00,
     total_budget DECIMAL(10,2) GENERATED ALWAYS AS (transport_budget + stay_budget + activities_budget + meals_budget + misc_budget) STORED,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
 );
 
+DROP TRIGGER IF EXISTS update_trip_budget_updated_at ON trip_budget;
+CREATE TRIGGER update_trip_budget_updated_at
+BEFORE UPDATE ON trip_budget
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TABLE IF NOT EXISTS community_posts (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     user_id INT,
     trip_id INT NULL,
     title VARCHAR(255),
@@ -105,20 +124,20 @@ CREATE TABLE IF NOT EXISTS community_posts (
 );
 
 CREATE TABLE IF NOT EXISTS community_likes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     post_id INT,
     user_id INT,
-    UNIQUE KEY (post_id, user_id),
+    UNIQUE (post_id, user_id),
     FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS saved_destinations (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     user_id INT,
     city_id INT,
     saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY (user_id, city_id),
+    UNIQUE (user_id, city_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (city_id) REFERENCES cities(id) ON DELETE CASCADE
 );

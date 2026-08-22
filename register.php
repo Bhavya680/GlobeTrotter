@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/auth.php';
 
 // If already logged in, redirect to dashboard
 if (isLoggedIn()) {
@@ -13,75 +14,79 @@ $formData = [
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $pdo = DB::getInstance();
-    
-    // Populate form data for sticky fields
-    foreach ($formData as $key => $value) {
-        $formData[$key] = trim($_POST[$key] ?? '');
-    }
-    
-    $password = $_POST['password'] ?? '';
-    $confirmPassword = $_POST['confirm_password'] ?? '';
-
-    // Validation
-    if (empty($formData['first_name']) || strlen($formData['first_name']) < 2) {
-        $errors['first_name'] = 'First name must be at least 2 characters.';
-    }
-    if (empty($formData['last_name']) || strlen($formData['last_name']) < 2) {
-        $errors['last_name'] = 'Last name must be at least 2 characters.';
-    }
-    if (empty($formData['email']) || !filter_var($formData['email'], FILTER_VALIDATE_EMAIL)) {
-        $errors['email'] = 'Valid email is required.';
+    if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
+        $errors['general'] = "Invalid CSRF token.";
     } else {
-        // Check uniqueness
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-        $stmt->execute([$formData['email']]);
-        if ($stmt->fetch()) {
-            $errors['email'] = 'Email is already registered.';
+        $pdo = DB::getInstance();
+        
+        // Populate form data for sticky fields
+        foreach ($formData as $key => $value) {
+            $formData[$key] = sanitize($_POST[$key] ?? '');
         }
-    }
+        
+        $password = $_POST['password'] ?? '';
+        $confirmPassword = $_POST['confirm_password'] ?? '';
 
-    if (empty($password) || strlen($password) < 8 || !preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
-        $errors['password'] = 'Password must be at least 8 characters long, contain 1 uppercase letter and 1 number.';
-    }
-    if ($password !== $confirmPassword) {
-        $errors['confirm_password'] = 'Passwords do not match.';
-    }
-    if (!empty($formData['phone']) && !preg_match('/^[0-9\+\-\s]+$/', $formData['phone'])) {
-        $errors['phone'] = 'Phone number can only contain numbers, spaces, and + or - signs.';
-    }
-
-    $photoFilename = null;
-    if (empty($errors)) {
-        // Handle photo upload if present
-        if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === UPLOAD_ERR_OK) {
-            $uploadedFile = uploadFile($_FILES['profile_photo'], 'profiles');
-            if ($uploadedFile) {
-                $photoFilename = $uploadedFile;
-            } else {
-                $errors['profile_photo'] = 'Failed to upload photo. Ensure it is a valid image (max 2MB).';
+        // Validation
+        if (empty($formData['first_name']) || strlen($formData['first_name']) < 2) {
+            $errors['first_name'] = 'First name must be at least 2 characters.';
+        }
+        if (empty($formData['last_name']) || strlen($formData['last_name']) < 2) {
+            $errors['last_name'] = 'Last name must be at least 2 characters.';
+        }
+        if (empty($formData['email']) || !filter_var($formData['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'Valid email is required.';
+        } else {
+            // Check uniqueness
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+            $stmt->execute([$formData['email']]);
+            if ($stmt->fetch()) {
+                $errors['email'] = 'Email is already registered.';
             }
         }
-    }
 
-    // Insert to DB if no errors
-    if (empty($errors)) {
-        $hash = password_hash($password, PASSWORD_DEFAULT);
-        
-        $stmt = $pdo->prepare("INSERT INTO users (first_name, last_name, email, password_hash, phone, city, country, additional_info, profile_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        
-        $success = $stmt->execute([
-            $formData['first_name'], $formData['last_name'], $formData['email'], 
-            $hash, $formData['phone'] ?: null, $formData['city'] ?: null, 
-            $formData['country'] ?: null, $formData['additional_info'] ?: null, $photoFilename
-        ]);
+        if (empty($password) || strlen($password) < 8 || !preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
+            $errors['password'] = 'Password must be at least 8 characters long, contain 1 uppercase letter and 1 number.';
+        }
+        if ($password !== $confirmPassword) {
+            $errors['confirm_password'] = 'Passwords do not match.';
+        }
+        if (!empty($formData['phone']) && !preg_match('/^[0-9\+\-\s]+$/', $formData['phone'])) {
+            $errors['phone'] = 'Phone number can only contain numbers, spaces, and + or - signs.';
+        }
 
-        if ($success) {
-            login($formData['email'], $password);
-            setFlash('success', 'Registration successful! Welcome to GlobeTrotter.');
-            redirect('dashboard.php');
-        } else {
-            $errors['general'] = 'Registration failed. Please try again.';
+        $photoFilename = null;
+        if (empty($errors)) {
+            // Handle photo upload if present
+            if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === UPLOAD_ERR_OK) {
+                $uploadedFile = uploadFile($_FILES['profile_photo'], 'profiles');
+                if ($uploadedFile) {
+                    $photoFilename = $uploadedFile;
+                } else {
+                    $errors['profile_photo'] = 'Failed to upload photo. Ensure it is a valid image (max 2MB).';
+                }
+            }
+        }
+
+        // Insert to DB if no errors
+        if (empty($errors)) {
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+            
+            $stmt = $pdo->prepare("INSERT INTO users (first_name, last_name, email, password_hash, phone, city, country, additional_info, profile_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            
+            $success = $stmt->execute([
+                $formData['first_name'], $formData['last_name'], $formData['email'], 
+                $hash, $formData['phone'] ?: null, $formData['city'] ?: null, 
+                $formData['country'] ?: null, $formData['additional_info'] ?: null, $photoFilename
+            ]);
+
+            if ($success) {
+                login($formData['email'], $password);
+                setFlash('success', 'Registration successful! Welcome to GlobeTrotter.');
+                redirect('dashboard.php');
+            } else {
+                $errors['general'] = 'Registration failed. Please try again.';
+            }
         }
     }
 }
@@ -99,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <form action="register.php" method="POST" id="registerForm" enctype="multipart/form-data" novalidate>
-                
+                <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="first_name" class="form-label">First Name *</label>
@@ -218,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (file) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                photoPreviewContainer.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                photoPreviewContainer.innerHTML = `<img src="${e.target.result}" alt="Preview" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
             }
             reader.readAsDataURL(file);
         } else {
@@ -311,7 +316,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- Bootstrap JS Bundle -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+<?php require_once __DIR__ . '/includes/footer.php'; ?>

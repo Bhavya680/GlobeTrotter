@@ -1,0 +1,35 @@
+# GlobeTrotter Apache Configuration
+
+DirectoryIndex index.php dashboard.php login.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Redirect trailing slashes if not a directory
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Serve existing files/directories directly
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Route public share URL alias: /share/slug => /public-itinerary.php?slug=slug
+    RewriteRule ^share/([a-zA-Z0-9_-]+)$ public-itinerary.php?slug=$1 [QSA,L]
+</IfModule>
+
+# Protect sensitive files & dotfiles
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+<FilesMatch "(config\.php|database\.sql|Dockerfile|docker-compose\.yml)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Enable Options
+Options -Indexes +FollowSymLinks

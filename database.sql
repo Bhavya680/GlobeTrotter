@@ -152,3 +152,11 @@ INSERT INTO activities (city_id, name, description, category, cost, duration_hou
 -- password: Admin@123
 INSERT INTO users (name, email, password_hash, is_admin) VALUES
 ('Admin User', 'admin@globetrotter.dev', '$2y$10$gdNM3dX3//fjJJ6S/DtMxO6Ff5LsgEuFZ7PxMP6JHOgQWnzjsEsiC', TRUE);
+
+-- ── Itinerary Builder: extra columns on stops ──────────────────────────────
+ALTER TABLE stops
+    ADD COLUMN IF NOT EXISTS transport_note      TEXT,
+    ADD COLUMN IF NOT EXISTS accommodation       VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS accommodation_cost  NUMERIC(10,2),
+    ADD COLUMN IF NOT EXISTS stop_notes          TEXT;
+

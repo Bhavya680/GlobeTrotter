@@ -37,6 +37,14 @@ $pageTitle = isset($pageTitle) ? $pageTitle : SITE_NAME;
     <?php if (isset($loadTripsCSS) && $loadTripsCSS): ?>
     <link rel="stylesheet" href="<?= SITE_URL ?>/assets/css/trips.css">
     <?php endif; ?>
+    <!-- Per-page extra CSS -->
+    <?php if (!empty($extraCSS)): ?>
+    <?php foreach ((array)$extraCSS as $cssHref): ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars($cssHref) ?>">
+    <?php endforeach; ?>
+    <?php endif; ?>
+    <!-- Per-page extra head content (scripts, meta, etc.) -->
+    <?php if (!empty($extraHead)) echo $extraHead; ?>
 </head>
 <body>
 

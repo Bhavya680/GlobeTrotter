@@ -330,7 +330,7 @@ require_once __DIR__ . '/includes/header.php';
 </template>
 
 <!-- Toast -->
-<div class="toast-container position-fixed bottom-0 end-0 p-3">
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
     <div id="actionToast" class="toast align-items-center text-white bg-dark border-0" role="alert">
         <div class="d-flex">
             <div class="toast-body" id="toastMsg"></div>
@@ -413,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`api/community.php?${params.toString()}`);
             const data = await res.json();
             
-            if (data.status === 'success') {
+            if (data.success) {
                 data.data.posts.forEach(post => {
                     feedContainer.appendChild(createPostElement(post));
                 });
@@ -571,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({post_id: post.id})
                 });
                 const data = await res.json();
-                if (data.status !== 'success') throw new Error();
+                if (!data.success) throw new Error();
                 // Sync exact count from server
                 likesCount.textContent = data.data.likes_count;
             } catch (e) {
@@ -632,7 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await res.json();
             
-            if(data.status === 'success') {
+            if(data.success) {
                 input.value = '';
                 // Optimistically add comment to UI (minimal mock)
                 appendComment(commentsList, {
@@ -645,7 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Remove empty msg if present
                 if (commentsList.innerHTML.includes('No comments')) commentsList.innerHTML = '';
             } else {
-                showToast(data.message || 'Error adding comment');
+                showToast(data.error || (data.data && data.data.message) || 'Error adding comment');
             }
         });
         
@@ -777,12 +777,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await res.json();
             
-            if (data.status === 'success') {
+            if (data.success) {
                 composeModal.hide();
                 showToast(id ? 'Post updated successfully' : 'Post created successfully');
                 fetchPosts(true); // refresh
             } else {
-                showToast(data.message);
+                showToast(data.error || (data.data && data.data.message) || 'An error occurred');
             }
         } catch(err) {
             showToast('Network error');

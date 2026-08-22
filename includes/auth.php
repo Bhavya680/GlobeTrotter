@@ -55,6 +55,27 @@ function require_admin(): void {
     }
 }
 
+/**
+ * Validate CSRF token for mutating API requests.
+ * Reads token from X-CSRF-Token header or _csrf_token body field.
+ * Call at the top of any POST/PUT/DELETE handler.
+ */
+function require_csrf(): void {
+    $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    if (in_array($method, ['GET', 'HEAD', 'OPTIONS'], true)) return;
+
+    $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if ($token === '') {
+        // Fallback: check body field
+        $body = get_request_body();
+        $token = $body['_csrf_token'] ?? '';
+    }
+
+    if (!validateCsrfToken($token)) {
+        json_error('Invalid or missing CSRF token', 403);
+    }
+}
+
 function require_login_page(string $redirectTo = '/login.php'): int {
     $userId = current_user_id();
     if ($userId === null) {

@@ -1,19 +1,10 @@
 <?php
-require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/auth.php';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['error' => 'Unauthorized']);
-    http_response_code(401);
-    exit;
-}
-
-$userId = $_SESSION['user_id'];
+$userId = require_login();
 $method = $_SERVER['REQUEST_METHOD'];
+require_csrf(); // Validate CSRF for POST/PUT/DELETE
+
 
 // Handle GET request to fetch budget vs actual
 if ($method === 'GET') {

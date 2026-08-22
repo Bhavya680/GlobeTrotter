@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/auth.php';
 
 $userId = require_login();
 $method = $_SERVER['REQUEST_METHOD'];
+require_csrf(); // Validate CSRF for POST/PUT/DELETE
 $tripId = isset($_GET['id']) ? (int) $_GET['id'] : null;
 
 $action = clean_str($_GET['action'] ?? '');
@@ -316,7 +317,7 @@ function copy_trip(PDO $pdo, int $userId): void
             foreach ($sourceActs as $a) {
                 $insertAct = $pdo->prepare('
                     INSERT INTO trip_activities (
-                        trip_stop_id, activity_id, scheduled_date, scheduled_time, notes, cost
+                        trip_stop_id, activity_id, scheduled_date, scheduled_time, notes, custom_cost
                     ) VALUES (?, ?, ?, ?, ?, ?)
                 ');
                 $insertAct->execute([
@@ -325,7 +326,7 @@ function copy_trip(PDO $pdo, int $userId): void
                     $a['scheduled_date'],
                     $a['scheduled_time'],
                     $a['notes'] ?? null,
-                    $a['cost'] ?? 0
+                    $a['custom_cost'] ?? 0
                 ]);
             }
         }

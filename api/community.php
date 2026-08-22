@@ -14,8 +14,9 @@ if ($method === 'GET') {
         get_feed($pdo, $userId);
     }
 } else {
-    // All POST/PUT/DELETE require login
+    // All POST/PUT/DELETE require login and CSRF validation
     $userId = require_login();
+    require_csrf(); // Validate CSRF for POST/PUT/DELETE
     
     if ($method === 'POST') {
         if ($action === 'like') {

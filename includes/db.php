@@ -1,6 +1,18 @@
 <?php
 require_once __DIR__ . '/../config.php';
 
+// Start session with secure cookie settings before any DB or output
+if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
+        'secure'   => false,  // set true when serving over HTTPS
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+
 try {
     if (!empty(DATABASE_URL)) {
         // Parse complete cloud connection URL: postgresql://user:password@host:port/dbname?sslmode=require

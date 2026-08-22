@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/auth.php';
 
 $userId = require_login();
 $method = $_SERVER['REQUEST_METHOD'];
+require_csrf(); // Validate CSRF for POST/PUT/DELETE
 $action = clean_str($_GET['action'] ?? '');
 
 switch ($method) {

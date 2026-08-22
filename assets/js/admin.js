@@ -1,5 +1,5 @@
 /**
- * GlobeTrotter — Admin Dashboard JavaScript Controller
+ * GlobeTrotter â€” Admin Dashboard JavaScript Controller
  */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -8,9 +8,10 @@ document.addEventListener('DOMContentLoaded', function () {
     initUserManagement();
     initCharts();
     initMobileSidebar();
+    initThemeToggler();
 });
 
-// ── Tab Management ─────────────────────────────────────────────────────────────
+// â”€â”€ Tab Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function initAdminTabs() {
     const navLinks = document.querySelectorAll('.admin-nav-link[data-tab]');
     const tabPanes = document.querySelectorAll('.admin-tab-pane');
@@ -56,7 +57,7 @@ function initAdminTabs() {
     }
 }
 
-// ── Metric Numbers Count-Up Animation ──────────────────────────────────────────
+// â”€â”€ Metric Numbers Count-Up Animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function initMetricCountUp() {
     document.querySelectorAll('.count-up').forEach(el => {
         const target = parseInt(el.dataset.target || el.textContent, 10);
@@ -80,7 +81,7 @@ function initMetricCountUp() {
     });
 }
 
-// ── Tab 1: User Management (Search, Sort, Pagination, Modals, AJAX) ─────────────
+// â”€â”€ Tab 1: User Management (Search, Sort, Pagination, Modals, AJAX) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let usersData = [];
 let currentPage = 1;
 const pageSize = 20;
@@ -284,7 +285,7 @@ function initUserManagement() {
     renderUsers();
 }
 
-// ── User Action Listeners (View Modal, Toggle Role, Delete Modal) ──────────────
+// â”€â”€ User Action Listeners (View Modal, Toggle Role, Delete Modal) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function attachUserActionListeners() {
     // 1. View User Details Modal
     document.querySelectorAll('.view-user-btn').forEach(btn => {
@@ -521,7 +522,7 @@ function attachUserActionListeners() {
     });
 }
 
-// ── Chart.js Initializations ───────────────────────────────────────────────────
+// â”€â”€ Chart.js Initializations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function initCharts() {
     initCitiesHorizontalBar();
     initActivitiesCategoryDonut();
@@ -644,7 +645,7 @@ function initActivitiesCategoryDonut() {
     });
 }
 
-// Tab 4: Chart A — New User Registrations Over Time (12 Months Line Chart)
+// Tab 4: Chart A â€” New User Registrations Over Time (12 Months Line Chart)
 function initRegistrationLineChart() {
     const canvas = document.getElementById('userRegistrationLineChart');
     if (!canvas || typeof Chart === 'undefined') return;
@@ -705,7 +706,7 @@ function initRegistrationLineChart() {
     });
 }
 
-// Tab 4: Chart C — Trips Created Per Month (6 Months Public vs Private Bar Chart)
+// Tab 4: Chart C â€” Trips Created Per Month (6 Months Public vs Private Bar Chart)
 function initTripsBarChart() {
     const canvas = document.getElementById('tripsPublicPrivateBarChart');
     if (!canvas || typeof Chart === 'undefined') return;
@@ -769,7 +770,7 @@ function initTripsBarChart() {
     });
 }
 
-// ── Mobile Sidebar Drawer ──────────────────────────────────────────────────────
+// â”€â”€ Mobile Sidebar Drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function initMobileSidebar() {
     const toggleBtn = document.getElementById('adminSidebarToggle');
     const sidebar = document.getElementById('adminSidebar');
@@ -794,7 +795,7 @@ function closeMobileSidebar() {
     if (backdrop) backdrop.classList.remove('show');
 }
 
-// ── Utilities & Toast ──────────────────────────────────────────────────────────
+// â”€â”€ Utilities & Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function escapeHtml(str) {
     if (!str) return '';
     return String(str)
@@ -830,4 +831,95 @@ function showAdminToast(message, type = 'success') {
         toast.style.transform = 'translateY(10px)';
         setTimeout(() => toast.remove(), 300);
     }, 4000);
+}
+
+// ── Theme Toggler ─────────────────────────────────────────────────────────────
+function initThemeToggler() {
+    const btn = document.getElementById("adminThemeToggler");
+    if (!btn) return;
+
+    // Check localStorage for theme
+    const savedTheme = localStorage.getItem("adminTheme") || "light";
+    if (savedTheme === "dark") {
+        document.documentElement.classList.add("dark");
+        btn.innerHTML = `<i class="fa-solid fa-sun"></i>`;
+    }
+
+    let isTransitioning = false;
+
+    btn.addEventListener("click", function(e) {
+        if (isTransitioning || document.documentElement.dataset.magicuiThemeVt === "active") return;
+
+        const isDark = document.documentElement.classList.contains("dark");
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        const { top, left, width, height } = btn.getBoundingClientRect();
+        const x = left + width / 2;
+        const y = top + height / 2;
+
+        const maxRadius = Math.hypot(
+            Math.max(x, viewportWidth - x),
+            Math.max(y, viewportHeight - y)
+        );
+
+        const toX = (px) => `${(px / viewportWidth) * 100}%`;
+        const toY = (py) => `${(py / viewportHeight) * 100}%`;
+        const point = (px, py) => `${toX(px)} ${toY(py)}`;
+        const toRadius = (r) => `${(r / (Math.hypot(viewportWidth, viewportHeight) / Math.SQRT2)) * 100}%`;
+
+        const clipPath = [
+            `circle(0% at ${point(x, y)})`,
+            `circle(${toRadius(maxRadius)} at ${point(x, y)})`
+        ];
+
+        const duration = 400;
+        const root = document.documentElement;
+
+        const applyTheme = () => {
+            const newTheme = !isDark;
+            root.classList.toggle("dark");
+            btn.innerHTML = newTheme ? `<i class="fa-solid fa-sun"></i>` : `<i class="fa-solid fa-moon"></i>`;
+            localStorage.setItem("adminTheme", newTheme ? "dark" : "light");
+        };
+
+        if (typeof document.startViewTransition !== "function") {
+            applyTheme();
+            return;
+        }
+
+        root.dataset.magicuiThemeVt = "active";
+        root.style.setProperty("--magicui-theme-toggle-vt-duration", `${duration}ms`);
+        root.style.setProperty("--magicui-theme-vt-clip-from", clipPath[0]);
+
+        isTransitioning = true;
+        const transition = document.startViewTransition(() => {
+            applyTheme();
+        });
+
+        const cleanup = () => {
+            isTransitioning = false;
+            delete root.dataset.magicuiThemeVt;
+            root.style.removeProperty("--magicui-theme-toggle-vt-duration");
+            root.style.removeProperty("--magicui-theme-vt-clip-from");
+        };
+
+        if (typeof transition.finished?.finally === "function") {
+            transition.finished.finally(cleanup).catch(() => {});
+        } else {
+            cleanup();
+        }
+
+        transition.ready.then(() => {
+            document.documentElement.animate(
+                { clipPath },
+                {
+                    duration,
+                    easing: "ease-in-out",
+                    fill: "forwards",
+                    pseudoElement: "::view-transition-new(root)"
+                }
+            );
+        }).catch(() => {});
+    });
 }

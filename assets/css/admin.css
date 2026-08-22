@@ -18,8 +18,65 @@
     --gt-radius: 16px;
     --gt-radius-sm: 10px;
     --gt-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.04);
-    --gt-shadow-md: 0 10px 30px rgba(15, 23, 42, 0.08);
-    --gt-shadow-lg: 0 20px 40px rgba(15, 23, 42, 0.12);
+    --gt-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.06);
+    --gt-text: #334155;
+}
+
+html.dark {
+    --gt-card-bg: #1e293b;
+    --gt-border: rgba(255, 255, 255, 0.1);
+    --gt-text: #f1f5f9;
+    --gt-primary-light: #1e293b;
+}
+
+html.dark body {
+    background-color: #0f172a;
+    color: var(--gt-text);
+}
+
+html.dark .admin-main {
+    background-color: #0f172a;
+}
+
+html.dark .metric-card,
+html.dark .admin-card,
+html.dark .admin-card-header {
+    background: var(--gt-card-bg);
+    border-color: var(--gt-border);
+    color: var(--gt-text);
+}
+
+html.dark .admin-card-title { color: #f1f5f9; }
+html.dark .metric-label { color: #94a3b8; }
+html.dark .metric-value { color: #f8fafc; }
+html.dark .admin-navbar { background: var(--gt-card-bg); border-bottom-color: var(--gt-border); }
+html.dark h5, html.dark h6 { color: #f1f5f9 !important; }
+html.dark .admin-table, html.dark .admin-table tbody td { color: var(--gt-text); }
+html.dark .admin-table .text-dark { color: #f8fafc !important; }
+html.dark .admin-table .text-secondary, html.dark .admin-table .text-muted { color: #cbd5e1 !important; }
+html.dark .admin-table thead th { background: rgba(255,255,255,0.05); color: #cbd5e1; border-color: var(--gt-border); }
+html.dark .admin-table td { border-color: var(--gt-border); border-bottom-color: var(--gt-border); }
+html.dark .admin-table tbody tr:hover { background-color: rgba(255,255,255,0.03); }
+html.dark .admin-search-input { background: rgba(255,255,255,0.05); color: #f1f5f9; border-color: rgba(255,255,255,0.1); }
+html.dark .admin-action-pill { background: rgba(255,255,255,0.05); color: #f1f5f9; border-color: rgba(255,255,255,0.1); }
+html.dark .admin-action-pill:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+/* View Transition API CSS */
+::view-transition-group(root) {
+  animation-duration: var(--magicui-theme-toggle-vt-duration);
+  animation-timing-function: cubic-bezier(0.87, 0, 0.13, 1);
+}
+
+::view-transition-new(root) {
+  animation: none;
+  clip-path: var(--magicui-theme-vt-clip-from);
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  animation: none;
+  mix-blend-mode: normal;
+  z-index: -1;
 }
 
 body.admin-body {

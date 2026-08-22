@@ -267,6 +267,11 @@ $tripsMonthlyPrivate = array_column($tripsMonthly, 'private');
                     </ul>
                 </div>
 
+                <!-- Theme Toggler -->
+                <button id="adminThemeToggler" class="btn admin-action-pill me-2" aria-label="Toggle theme">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+
                 <!-- Admin Profile Dropdown -->
                 <div class="dropdown">
                     <div class="admin-user-avatar" data-bs-toggle="dropdown" aria-expanded="false" role="button">

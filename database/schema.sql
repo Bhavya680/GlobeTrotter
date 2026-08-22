@@ -170,6 +170,7 @@ CREATE TABLE IF NOT EXISTS community_posts (
     title           VARCHAR(200) NOT NULL,
     content         TEXT NOT NULL,
     likes_count     INT NOT NULL DEFAULT 0,
+    tags            JSONB DEFAULT '[]'::jsonb,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -185,6 +186,14 @@ CREATE TABLE IF NOT EXISTS community_likes (
     user_id         INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_post_user_like UNIQUE (post_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS community_comments (
+    id              SERIAL PRIMARY KEY,
+    post_id         INT NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+    user_id         INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    comment         TEXT NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- ── 10. Saved Destinations ───────────────────────────────────────────────────

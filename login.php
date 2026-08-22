@@ -1,73 +1,159 @@
 <?php
+require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/auth.php';
 
+// If already logged in, redirect to dashboard
 if (isLoggedIn()) {
     redirect('dashboard.php');
 }
 
-$error = '';
+$errors = [];
 $email = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
-        $error = "Invalid CSRF token. Please try again.";
+        $errors['login'] = "Invalid CSRF token. Please try again.";
     } else {
         $email = sanitize($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
 
-        if (empty($email) || empty($password)) {
-            $error = "Email and password are required.";
-        } else {
+        if (empty($email)) {
+            $errors['email'] = 'Email is required.';
+        }
+        if (empty($password)) {
+            $errors['password'] = 'Password is required.';
+        }
+
+        if (empty($errors)) {
             if (login($email, $password)) {
                 setFlash('success', 'Welcome back!');
                 redirect('dashboard.php');
             } else {
-                $error = "Invalid email or password.";
+                $errors['login'] = 'Invalid email or password.';
             }
         }
     }
 }
 ?>
-<?php require_once __DIR__ . '/includes/header.php'; ?>
-<div class="container d-flex justify-content-center align-items-center vh-100">
-    <div class="card p-4 shadow" style="max-width: 400px; width: 100%; border-radius: 16px;">
-        <div class="text-center mb-4">
-            <i class="fa fa-globe text-primary fa-3x mb-2"></i>
-            <h2>GlobeTrotter</h2>
-            <div class="mt-3">
-                <div style="width: 80px; height: 80px; border-radius: 50%; background: #e9ecef; margin: 0 auto; border: 3px solid #2563EB;"></div>
+
+<div class="auth-page">
+    <div class="container d-flex justify-content-center">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <i class="fa-solid fa-globe"></i> GlobeTrotter
+            </div>
+            
+            <div class="avatar-placeholder">
+                <i class="fa-solid fa-user"></i>
+            </div>
+
+            <?php if (isset($errors['login'])): ?>
+                <div class="alert alert-danger" role="alert">
+                    <?= htmlspecialchars($errors['login']) ?>
+                </div>
+            <?php endif; ?>
+
+            <form action="login.php" method="POST" id="loginForm" novalidate>
+                <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email Address</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
+                        <input type="email" class="form-control <?= isset($errors['email']) ? 'is-invalid' : '' ?>" id="email" name="email" value="<?= htmlspecialchars($email) ?>" required>
+                        <?php if (isset($errors['email'])): ?>
+                            <div class="invalid-feedback"><?= htmlspecialchars($errors['email']) ?></div>
+                        <?php endif; ?>
+                        <div class="invalid-feedback client-error">Please enter a valid email address.</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                        <input type="password" class="form-control <?= isset($errors['password']) ? 'is-invalid' : '' ?>" id="password" name="password" required>
+                        <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                        <?php if (isset($errors['password'])): ?>
+                            <div class="invalid-feedback d-block"><?= htmlspecialchars($errors['password']) ?></div>
+                        <?php endif; ?>
+                        <div class="invalid-feedback client-error">Password is required.</div>
+                    </div>
+                </div>
+
+                <div class="mb-3 d-flex justify-content-between align-items-center">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="1" id="rememberMe" name="remember">
+                        <label class="form-check-label" for="rememberMe">
+                            Remember Me
+                        </label>
+                    </div>
+                    <a href="#" onclick="alert('Contact admin to reset password.'); return false;" class="text-decoration-none small">Forgot Password?</a>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100" id="submitBtn">Login</button>
+            </form>
+
+            <div class="auth-links mt-4">
+                <p>Don't have an account? <a href="register.php">Sign Up</a></p>
             </div>
         </div>
-        
-        <?php if ($error): ?>
-            <div class="alert alert-danger"><?= $error ?></div>
-        <?php endif; ?>
-        
-        <form method="POST" action="login.php">
-            <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
-            <div class="mb-3">
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa fa-envelope"></i></span>
-                    <input type="email" name="email" class="form-control" placeholder="Email Address" value="<?= htmlspecialchars($email) ?>" required>
-                </div>
-            </div>
-            <div class="mb-3">
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa fa-lock"></i></span>
-                    <input type="password" name="password" id="password" class="form-control" placeholder="Password" required>
-                    <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('password').type = document.getElementById('password').type === 'password' ? 'text' : 'password'"><i class="fa fa-eye"></i></button>
-                </div>
-            </div>
-            <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="rememberMe">
-                <label class="form-check-label" for="rememberMe">Remember Me</label>
-            </div>
-            <button type="submit" class="btn btn-primary w-100 mb-3">Login</button>
-            <div class="text-center">
-                <a href="register.php" class="text-decoration-none">Don't have an account? Sign Up</a><br>
-                <a href="#" onclick="alert('Contact admin to reset')" class="text-decoration-none text-muted small">Forgot Password?</a>
-            </div>
-        </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('loginForm');
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Toggle password visibility
+    togglePassword.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        this.innerHTML = type === 'password' ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash"></i>';
+    });
+
+    // Real-time validation
+    const inputs = loginForm.querySelectorAll('input[required]');
+    inputs.forEach(input => {
+        input.addEventListener('input', function() {
+            if (this.checkValidity()) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            } else {
+                this.classList.remove('is-valid');
+                // Don't show error immediately while typing, only if invalid after blur or submit
+            }
+        });
+        
+        input.addEventListener('blur', function() {
+            if (!this.checkValidity()) {
+                this.classList.add('is-invalid');
+            }
+        });
+    });
+
+    // Form submission validation
+    loginForm.addEventListener('submit', function(event) {
+        if (!loginForm.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            inputs.forEach(input => {
+                if (!input.checkValidity()) {
+                    input.classList.add('is-invalid');
+                }
+            });
+        } else {
+            // Disable button to prevent double submit
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Logging in...';
+        }
+    });
+});
+</script>
+
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

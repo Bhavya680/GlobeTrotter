@@ -1,154 +1,319 @@
 <?php
+require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/auth.php';
 
+// If already logged in, redirect to dashboard
 if (isLoggedIn()) {
     redirect('dashboard.php');
 }
 
-$errors = [];
-$form_data = [
+$formData = [
     'first_name' => '', 'last_name' => '', 'email' => '', 
     'phone' => '', 'city' => '', 'country' => '', 'additional_info' => ''
 ];
+$errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
-        $errors[] = "Invalid CSRF token.";
+        $errors['general'] = "Invalid CSRF token.";
     } else {
-        foreach ($form_data as $key => $val) {
-            $form_data[$key] = sanitize($_POST[$key] ?? '');
+        $pdo = DB::getInstance();
+        
+        // Populate form data for sticky fields
+        foreach ($formData as $key => $value) {
+            $formData[$key] = sanitize($_POST[$key] ?? '');
         }
+        
         $password = $_POST['password'] ?? '';
-        $confirm_password = $_POST['confirm_password'] ?? '';
+        $confirmPassword = $_POST['confirm_password'] ?? '';
 
         // Validation
-        if (strlen($form_data['first_name']) < 2) $errors[] = "First name must be at least 2 characters.";
-        if (strlen($form_data['last_name']) < 2) $errors[] = "Last name must be at least 2 characters.";
-        if (!filter_var($form_data['email'], FILTER_VALIDATE_EMAIL)) $errors[] = "Invalid email format.";
-        
-        if (strlen($password) < 8 || !preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
-            $errors[] = "Password must be at least 8 characters, with 1 uppercase and 1 number.";
+        if (empty($formData['first_name']) || strlen($formData['first_name']) < 2) {
+            $errors['first_name'] = 'First name must be at least 2 characters.';
         }
-        if ($password !== $confirm_password) $errors[] = "Passwords do not match.";
-        if (!empty($form_data['phone']) && !is_numeric($form_data['phone'])) $errors[] = "Phone must be numeric.";
-
-        // Unique email check
-        $pdo = DB::getInstance();
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-        $stmt->execute([$form_data['email']]);
-        if ($stmt->fetch()) {
-            $errors[] = "Email is already registered.";
+        if (empty($formData['last_name']) || strlen($formData['last_name']) < 2) {
+            $errors['last_name'] = 'Last name must be at least 2 characters.';
+        }
+        if (empty($formData['email']) || !filter_var($formData['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'Valid email is required.';
+        } else {
+            // Check uniqueness
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+            $stmt->execute([$formData['email']]);
+            if ($stmt->fetch()) {
+                $errors['email'] = 'Email is already registered.';
+            }
         }
 
+        if (empty($password) || strlen($password) < 8 || !preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
+            $errors['password'] = 'Password must be at least 8 characters long, contain 1 uppercase letter and 1 number.';
+        }
+        if ($password !== $confirmPassword) {
+            $errors['confirm_password'] = 'Passwords do not match.';
+        }
+        if (!empty($formData['phone']) && !preg_match('/^[0-9\+\-\s]+$/', $formData['phone'])) {
+            $errors['phone'] = 'Phone number can only contain numbers, spaces, and + or - signs.';
+        }
+
+        $photoFilename = null;
         if (empty($errors)) {
-            $profile_photo = null;
+            // Handle photo upload if present
             if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === UPLOAD_ERR_OK) {
-                $profile_photo = uploadFile($_FILES['profile_photo'], 'profiles');
-                if (!$profile_photo) {
-                    $errors[] = "Failed to upload profile photo. Ensure it is a valid image under 2MB.";
+                $uploadedFile = uploadFile($_FILES['profile_photo'], 'profiles');
+                if ($uploadedFile) {
+                    $photoFilename = $uploadedFile;
+                } else {
+                    $errors['profile_photo'] = 'Failed to upload photo. Ensure it is a valid image (max 2MB).';
                 }
             }
+        }
+
+        // Insert to DB if no errors
+        if (empty($errors)) {
+            $hash = password_hash($password, PASSWORD_DEFAULT);
             
-            if (empty($errors)) {
-                $hash = password_hash($password, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("INSERT INTO users (first_name, last_name, email, password_hash, phone, city, country, profile_photo, additional_info) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                
-                if ($stmt->execute([
-                    $form_data['first_name'], $form_data['last_name'], $form_data['email'], 
-                    $hash, $form_data['phone'], $form_data['city'], $form_data['country'], 
-                    $profile_photo, $form_data['additional_info']
-                ])) {
-                    login($form_data['email'], $password);
-                    setFlash('success', 'Registration successful! Welcome to GlobeTrotter.');
-                    redirect('dashboard.php');
-                } else {
-                    $errors[] = "A database error occurred.";
-                }
+            $stmt = $pdo->prepare("INSERT INTO users (first_name, last_name, email, password_hash, phone, city, country, additional_info, profile_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            
+            $success = $stmt->execute([
+                $formData['first_name'], $formData['last_name'], $formData['email'], 
+                $hash, $formData['phone'] ?: null, $formData['city'] ?: null, 
+                $formData['country'] ?: null, $formData['additional_info'] ?: null, $photoFilename
+            ]);
+
+            if ($success) {
+                login($formData['email'], $password);
+                setFlash('success', 'Registration successful! Welcome to GlobeTrotter.');
+                redirect('dashboard.php');
+            } else {
+                $errors['general'] = 'Registration failed. Please try again.';
             }
         }
     }
 }
 ?>
-<?php require_once __DIR__ . '/includes/header.php'; ?>
-<div class="container py-5">
-    <div class="card shadow mx-auto" style="max-width: 600px; border-radius: 16px;">
-        <div class="card-body">
-            <h3 class="text-center mb-4"><i class="fa fa-globe text-primary"></i> Create an Account</h3>
+
+<div class="auth-page">
+    <div class="container d-flex justify-content-center">
+        <div class="auth-card register-card">
+            <div class="auth-logo">
+                <i class="fa-solid fa-globe"></i> Create Account
+            </div>
             
-            <?php if (!empty($errors)): ?>
-                <div class="alert alert-danger">
-                    <ul class="mb-0">
-                        <?php foreach($errors as $err) echo "<li>".htmlspecialchars($err)."</li>"; ?>
-                    </ul>
-                </div>
+            <?php if (isset($errors['general'])): ?>
+                <div class="alert alert-danger"><?= htmlspecialchars($errors['general']) ?></div>
             <?php endif; ?>
 
-            <form method="POST" action="register.php" enctype="multipart/form-data">
+            <form action="register.php" method="POST" id="registerForm" enctype="multipart/form-data" novalidate>
                 <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
-                
-                <div class="text-center mb-4">
-                    <div id="photo-preview" style="width: 100px; height: 100px; border-radius: 50%; border: 3px solid #2563EB; background: #e9ecef; margin: 0 auto; background-size: cover; background-position: center;"></div>
-                    <label class="btn btn-sm btn-outline-primary mt-2">
-                        Upload Photo <input type="file" name="profile_photo" hidden accept="image/*" onchange="document.getElementById('photo-preview').style.backgroundImage = 'url(' + window.URL.createObjectURL(this.files[0]) + ')'">
-                    </label>
-                </div>
-
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">First Name *</label>
-                        <input type="text" name="first_name" class="form-control" value="<?= htmlspecialchars($form_data['first_name']) ?>" required>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="first_name" class="form-label">First Name *</label>
+                        <input type="text" class="form-control <?= isset($errors['first_name']) ? 'is-invalid' : '' ?>" id="first_name" name="first_name" value="<?= htmlspecialchars($formData['first_name']) ?>" required minlength="2">
+                        <?php if (isset($errors['first_name'])): ?>
+                            <div class="invalid-feedback d-block"><?= htmlspecialchars($errors['first_name']) ?></div>
+                        <?php endif; ?>
+                        <div class="invalid-feedback client-error">Please enter at least 2 characters.</div>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Last Name *</label>
-                        <input type="text" name="last_name" class="form-control" value="<?= htmlspecialchars($form_data['last_name']) ?>" required>
-                    </div>
-                </div>
-
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Email Address *</label>
-                        <input type="email" name="email" class="form-control" value="<?= htmlspecialchars($form_data['email']) ?>" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Phone Number</label>
-                        <input type="text" name="phone" class="form-control" value="<?= htmlspecialchars($form_data['phone']) ?>">
+                    <div class="col-md-6 mb-3">
+                        <label for="last_name" class="form-label">Last Name *</label>
+                        <input type="text" class="form-control <?= isset($errors['last_name']) ? 'is-invalid' : '' ?>" id="last_name" name="last_name" value="<?= htmlspecialchars($formData['last_name']) ?>" required minlength="2">
+                        <?php if (isset($errors['last_name'])): ?>
+                            <div class="invalid-feedback d-block"><?= htmlspecialchars($errors['last_name']) ?></div>
+                        <?php endif; ?>
+                        <div class="invalid-feedback client-error">Please enter at least 2 characters.</div>
                     </div>
                 </div>
 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Password *</label>
-                        <input type="password" name="password" class="form-control" required>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="email" class="form-label">Email Address *</label>
+                        <input type="email" class="form-control <?= isset($errors['email']) ? 'is-invalid' : '' ?>" id="email" name="email" value="<?= htmlspecialchars($formData['email']) ?>" required>
+                        <?php if (isset($errors['email'])): ?>
+                            <div class="invalid-feedback d-block"><?= htmlspecialchars($errors['email']) ?></div>
+                        <?php endif; ?>
+                        <div class="invalid-feedback client-error">Please enter a valid email.</div>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Confirm Password *</label>
-                        <input type="password" name="confirm_password" class="form-control" required>
-                    </div>
-                </div>
-
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">City</label>
-                        <input type="text" name="city" class="form-control" value="<?= htmlspecialchars($form_data['city']) ?>">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Country</label>
-                        <input type="text" name="country" class="form-control" value="<?= htmlspecialchars($form_data['country']) ?>">
+                    <div class="col-md-6 mb-3">
+                        <label for="phone" class="form-label">Phone Number</label>
+                        <input type="tel" class="form-control <?= isset($errors['phone']) ? 'is-invalid' : '' ?>" id="phone" name="phone" value="<?= htmlspecialchars($formData['phone']) ?>" pattern="^[0-9\+\-\s]+$">
+                        <?php if (isset($errors['phone'])): ?>
+                            <div class="invalid-feedback d-block"><?= htmlspecialchars($errors['phone']) ?></div>
+                        <?php endif; ?>
+                        <div class="invalid-feedback client-error">Numbers and + - only.</div>
                     </div>
                 </div>
 
-                <div class="mb-4">
-                    <label class="form-label">Additional Information</label>
-                    <textarea name="additional_info" class="form-control" rows="3"><?= htmlspecialchars($form_data['additional_info']) ?></textarea>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="password" class="form-label">Password *</label>
+                        <input type="password" class="form-control <?= isset($errors['password']) ? 'is-invalid' : '' ?>" id="password" name="password" required minlength="8">
+                        
+                        <!-- Password Strength Indicator -->
+                        <div class="password-strength-bar">
+                            <div class="password-strength-fill" id="strengthFill"></div>
+                        </div>
+                        <div class="password-strength-text" id="strengthText"></div>
+
+                        <?php if (isset($errors['password'])): ?>
+                            <div class="invalid-feedback d-block"><?= htmlspecialchars($errors['password']) ?></div>
+                        <?php endif; ?>
+                        <div class="invalid-feedback client-error">Min 8 chars, 1 uppercase, 1 number.</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="confirm_password" class="form-label">Confirm Password *</label>
+                        <input type="password" class="form-control <?= isset($errors['confirm_password']) ? 'is-invalid' : '' ?>" id="confirm_password" name="confirm_password" required>
+                        <?php if (isset($errors['confirm_password'])): ?>
+                            <div class="invalid-feedback d-block"><?= htmlspecialchars($errors['confirm_password']) ?></div>
+                        <?php endif; ?>
+                        <div class="invalid-feedback client-error">Passwords must match.</div>
+                    </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100 mb-3" id="submitBtn" onclick="this.disabled=true;this.form.submit();">Register</button>
-                
-                <div class="text-center">
-                    <a href="login.php" class="text-decoration-none">Already have an account? Login</a>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="city" class="form-label">City</label>
+                        <input type="text" class="form-control" id="city" name="city" value="<?= htmlspecialchars($formData['city']) ?>">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="country" class="form-label">Country</label>
+                        <input type="text" class="form-control" id="country" name="country" value="<?= htmlspecialchars($formData['country']) ?>">
+                    </div>
                 </div>
+
+                <div class="mb-3">
+                    <label for="additional_info" class="form-label">Additional Information</label>
+                    <textarea class="form-control" id="additional_info" name="additional_info" rows="2"><?= htmlspecialchars($formData['additional_info']) ?></textarea>
+                </div>
+
+                <div class="mb-4 text-center">
+                    <label class="form-label d-block text-start">Profile Photo</label>
+                    <div class="avatar-placeholder" id="photoPreviewContainer">
+                        <i class="fa-solid fa-camera"></i>
+                    </div>
+                    <input class="form-control form-control-sm <?= isset($errors['profile_photo']) ? 'is-invalid' : '' ?>" type="file" id="profile_photo" name="profile_photo" accept="image/jpeg, image/png, image/webp">
+                    <?php if (isset($errors['profile_photo'])): ?>
+                        <div class="invalid-feedback d-block"><?= htmlspecialchars($errors['profile_photo']) ?></div>
+                    <?php endif; ?>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100" id="submitBtn">Register</button>
             </form>
+
+            <div class="auth-links mt-4">
+                <p>Already have an account? <a href="login.php">Login</a></p>
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const registerForm = document.getElementById('registerForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirm_password');
+    const photoInput = document.getElementById('profile_photo');
+    const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+    const strengthFill = document.getElementById('strengthFill');
+    const strengthText = document.getElementById('strengthText');
+
+    // Photo Preview
+    photoInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                photoPreviewContainer.innerHTML = `<img src="${e.target.result}" alt="Preview" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+            }
+            reader.readAsDataURL(file);
+        } else {
+            photoPreviewContainer.innerHTML = '<i class="fa-solid fa-camera"></i>';
+        }
+    });
+
+    // Password Strength
+    passwordInput.addEventListener('input', function() {
+        const val = this.value;
+        let score = 0;
+        
+        if (val.length > 0) score++;
+        if (val.length >= 8) score++;
+        if (/[A-Z]/.test(val)) score++;
+        if (/[0-9]/.test(val)) score++;
+        if (/[^A-Za-z0-9]/.test(val)) score++; // bonus for special char
+
+        strengthFill.className = 'password-strength-fill'; // reset
+        
+        if (val.length === 0) {
+            strengthFill.style.width = '0';
+            strengthText.textContent = '';
+        } else if (score < 3 || val.length < 8) {
+            strengthFill.classList.add('strength-weak');
+            strengthText.textContent = 'Weak';
+        } else if (score === 3 || score === 4) {
+            strengthFill.classList.add('strength-medium');
+            strengthText.textContent = 'Medium';
+        } else {
+            strengthFill.classList.add('strength-strong');
+            strengthText.textContent = 'Strong';
+        }
+        
+        // Custom validity for requirements
+        if (val.length < 8 || !/[A-Z]/.test(val) || !/[0-9]/.test(val)) {
+            this.setCustomValidity("Min 8 chars, 1 uppercase, 1 number");
+        } else {
+            this.setCustomValidity("");
+        }
+        
+        // Re-check confirm password
+        if (confirmPasswordInput.value) {
+            validateConfirmPassword();
+        }
+    });
+
+    function validateConfirmPassword() {
+        if (confirmPasswordInput.value !== passwordInput.value) {
+            confirmPasswordInput.setCustomValidity("Passwords do not match");
+        } else {
+            confirmPasswordInput.setCustomValidity("");
+        }
+    }
+
+    confirmPasswordInput.addEventListener('input', validateConfirmPassword);
+
+    // Form validation visuals on blur/input
+    const inputs = registerForm.querySelectorAll('input[required], input[pattern]');
+    inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            if (!this.checkValidity()) {
+                this.classList.add('is-invalid');
+                this.classList.remove('is-valid');
+            } else {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            }
+        });
+    });
+
+    // Submit handler
+    registerForm.addEventListener('submit', function(event) {
+        validateConfirmPassword();
+        
+        if (!registerForm.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            inputs.forEach(input => {
+                if (!input.checkValidity()) {
+                    input.classList.add('is-invalid');
+                }
+            });
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Registering...';
+        }
+    });
+});
+</script>
+
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

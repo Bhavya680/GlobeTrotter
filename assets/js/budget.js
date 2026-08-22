@@ -85,6 +85,25 @@ function initAddExpenseForm() {
         }
     });
 
+    document.getElementById('btnAutoFillExpense')?.addEventListener('click', function() {
+        const sampleExpenses = [
+            { category: 'meals', amount: 48.50, desc: 'Traditional Bistro Lunch & Wine' },
+            { category: 'transport', amount: 35.00, desc: 'Express Train Pass' },
+            { category: 'stay', amount: 165.00, desc: 'Boutique Hotel Night 1' },
+            { category: 'other', amount: 25.00, desc: 'Museum Entry & Audio Guide' }
+        ];
+        const choice = sampleExpenses[Math.floor(Math.random() * sampleExpenses.length)];
+        const catEl = document.getElementById('expCategory');
+        const amtEl = document.getElementById('expAmount');
+        const descEl = document.getElementById('expDescription');
+        if (catEl) catEl.value = choice.category;
+        if (amtEl) amtEl.value = choice.amount;
+        if (descEl) descEl.value = choice.desc;
+        if (typeof toast === 'function') {
+            toast('Expense details auto-filled!', 'success');
+        }
+    });
+
     document.querySelectorAll('.delete-expense-btn').forEach(function(btn) {
         btn.addEventListener('click', async function() {
             const expId = btn.dataset.id;

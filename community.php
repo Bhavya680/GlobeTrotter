@@ -138,6 +138,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-info btn-sm me-auto" id="btnAutoFillStory"><i class="fa-solid fa-magic me-1"></i> Auto-Fill Story</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane me-1"></i> Publish Post</button>
                 </div>

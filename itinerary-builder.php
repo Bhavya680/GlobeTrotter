@@ -267,17 +267,22 @@ include __DIR__ . '/includes/header.php';
             </button>
         </h1>
 
-        <div class="meta-row">
-            <span>
-                <i class="fa-solid fa-calendar-days"></i>
-                <?= date('D, d M Y', strtotime($trip['start_date'])) ?>
-                &nbsp;→&nbsp;
-                <?= date('D, d M Y', strtotime($trip['end_date'])) ?>
-            </span>
-            <span>
-                <i class="fa-solid fa-map-pin"></i>
-                <span id="stopCountDisplay"><?= count($stops) ?></span> stop<?= count($stops) !== 1 ? 's' : '' ?>
-            </span>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-2">
+            <div class="meta-row mb-0">
+                <span>
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <?= date('D, d M Y', strtotime($trip['start_date'])) ?>
+                    &nbsp;→&nbsp;
+                    <?= date('D, d M Y', strtotime($trip['end_date'])) ?>
+                </span>
+                <span>
+                    <i class="fa-solid fa-map-pin"></i>
+                    <span id="stopCountDisplay"><?= count($stops) ?></span> stop<?= count($stops) !== 1 ? 's' : '' ?>
+                </span>
+            </div>
+            <button type="button" class="btn btn-light btn-sm fw-semibold shadow-sm text-primary" id="btnAutoFillItinerary">
+                <i class="fa-solid fa-magic text-warning me-1"></i> Auto-Fill Itinerary Details
+            </button>
         </div>
 
         <button class="ib-sidebar-toggle" id="sidebarToggle" aria-label="Toggle trip overview">

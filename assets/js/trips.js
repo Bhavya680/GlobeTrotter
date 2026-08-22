@@ -246,6 +246,9 @@ function initRandomAutoFill() {
         const stopsContainer = document.getElementById('stopsContainer');
         if (stopsContainer && choice.stops) {
             const stopCards = stopsContainer.querySelectorAll('.stop-card');
+            const numStops = choice.stops.length;
+            const daysPerStop = Math.max(2, Math.floor(10 / numStops));
+
             choice.stops.forEach((st, idx) => {
                 let card = stopCards[idx];
                 if (!card) {
@@ -257,10 +260,22 @@ function initRandomAutoFill() {
                 if (card) {
                     const cityInput = card.querySelector('.city-search-input');
                     const hiddenInput = card.querySelector('.city-id-input');
+                    const arrInput = card.querySelector('.stop-arrival');
+                    const depInput = card.querySelector('.stop-departure');
+
                     if (cityInput && hiddenInput) {
                         cityInput.value = st.name;
                         hiddenInput.value = st.city_id;
                     }
+
+                    // Calculate stop dates
+                    const stopStart = new Date(start);
+                    stopStart.setDate(stopStart.getDate() + (idx * daysPerStop));
+                    const stopEnd = new Date(stopStart);
+                    stopEnd.setDate(stopEnd.getDate() + daysPerStop);
+
+                    if (arrInput) arrInput.value = formatDate(stopStart);
+                    if (depInput) depInput.value = formatDate(stopEnd);
                 }
             });
         }

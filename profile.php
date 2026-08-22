@@ -99,7 +99,10 @@ require_once __DIR__ . '/includes/header.php';
                             <label class="form-label small fw-semibold">Update Profile Photo</label>
                             <input type="file" id="profPhoto" class="form-control" accept="image/jpeg, image/png, image/webp">
                         </div>
-                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> Save Changes</button>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> Save Changes</button>
+                            <button type="button" class="btn btn-outline-secondary" id="btnAutoFillProfile"><i class="fa-solid fa-magic me-1"></i> Auto-Fill Sample Info</button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -119,10 +122,10 @@ require_once __DIR__ . '/includes/header.php';
                                 <div class="col-md-6">
                                     <div class="d-flex justify-content-between align-items-center p-2 border rounded">
                                         <div>
-                                            <strong class="d-block text-dark"><?= htmlspecialchars($sd['name']) ?></strong>
-                                            <span class="small text-muted"><?= htmlspecialchars($sd['country']) ?> ($<?= $sd['cost_index'] ?> index)</span>
+                                            <strong class="d-block text-dark small"><?= htmlspecialchars($sd['name']) ?></strong>
+                                            <span class="text-muted extra-small"><?= htmlspecialchars($sd['country']) ?></span>
                                         </div>
-                                        <a href="city-search.php?q=<?= urlencode($sd['name']) ?>" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-arrow-right"></i></a>
+                                        <a href="city-search.php?q=<?= urlencode($sd['name']) ?>" class="btn btn-sm btn-outline-primary py-0 px-2 small">View</a>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -137,6 +140,16 @@ require_once __DIR__ . '/includes/header.php';
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('profileUpdateForm');
+
+    document.getElementById('btnAutoFillProfile')?.addEventListener('click', function() {
+        document.getElementById('profPhone').value = '+1 (555) 234-5678';
+        document.getElementById('profCity').value = 'San Francisco';
+        document.getElementById('profCountry').value = 'United States';
+        document.getElementById('profInfo').value = 'Traveler & explorer. Love photography, local gastronomy, and high-speed trains.';
+        if (typeof toast === 'function') {
+            toast('Profile sample info auto-filled!', 'success');
+        }
+    });
     if (!form) return;
 
     form.addEventListener('submit', async function(e) {

@@ -184,7 +184,7 @@ if ($flash):
                         <a href="<?= SITE_URL ?>/city-search.php" role="menuitem">
                             <i class="fa-solid fa-compass"></i> Explore Cities
                         </a>
-                        <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                        <?php if ($currentUser && $currentUser['role'] === 'admin'): ?>
                         <div class="dd-divider"></div>
                         <a href="<?= SITE_URL ?>/admin/index.php" role="menuitem">
                             <i class="fa-solid fa-shield-halved text-primary"></i> Admin Dashboard

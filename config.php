@@ -8,7 +8,7 @@ define('DB_PASS', 'Asdf@123');
 
 // Site Constants
 define('SITE_NAME', 'GlobeTrotter');
-define('SITE_URL', 'http://localhost/globetrotter'); // Adjust as needed
+define('SITE_URL', 'http://localhost:8000'); // Updated for local PHP server
 define('UPLOAD_PATH', __DIR__ . '/assets/uploads/');
 
 // Upload settings

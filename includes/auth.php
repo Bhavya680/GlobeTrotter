@@ -33,14 +33,15 @@ function getCurrentUser() {
 
 function login($email, $password) {
     $pdo = DB::getInstance();
-    $stmt = $pdo->prepare("SELECT id, password_hash, role FROM users WHERE email = ?");
+    $stmt = $pdo->prepare("SELECT id, first_name, password_hash, role FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password_hash'])) {
         session_regenerate_id(true); // Prevent session fixation
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['role'] = $user['role'];
+        $_SESSION['user_id']    = $user['id'];
+        $_SESSION['role']       = $user['role'];
+        $_SESSION['first_name'] = $user['first_name'];
         return true;
     }
     return false;

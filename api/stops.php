@@ -50,13 +50,13 @@ function list_stops(PDO $pdo, int $userId, int $tripId): void {
         json_error('Trip not found', 404);
     }
     $stmt = $pdo->prepare('
-        SELECT s.id, s.city_id, s.start_date, s.end_date, s.sort_order,
-               s.transport_note, s.accommodation, s.accommodation_cost, s.stop_notes,
+        SELECT s.id, s.city_id, s.arrival_date AS start_date, s.departure_date AS end_date, s.order_index AS sort_order,
+               s.transport_note, s.accommodation, s.budget_for_stop AS accommodation_cost, s.notes AS stop_notes,
                c.name AS city_name, c.country AS city_country
-        FROM stops s
+        FROM trip_stops s
         JOIN cities c ON c.id = s.city_id
         WHERE s.trip_id = ?
-        ORDER BY s.sort_order ASC, s.start_date ASC
+        ORDER BY s.order_index ASC, s.arrival_date ASC
     ');
     $stmt->execute([$tripId]);
     json_success($stmt->fetchAll());
@@ -68,13 +68,13 @@ function list_stops_with_activities(PDO $pdo, int $userId, int $tripId): void {
     }
 
     $stopsStmt = $pdo->prepare('
-        SELECT s.id, s.city_id, s.start_date, s.end_date, s.sort_order,
-               s.transport_note, s.accommodation, s.accommodation_cost, s.stop_notes,
+        SELECT s.id, s.city_id, s.arrival_date AS start_date, s.departure_date AS end_date, s.order_index AS sort_order,
+               s.transport_note, s.accommodation, s.budget_for_stop AS accommodation_cost, s.notes AS stop_notes,
                c.name AS city_name, c.country AS city_country
-        FROM stops s
+        FROM trip_stops s
         JOIN cities c ON c.id = s.city_id
         WHERE s.trip_id = ?
-        ORDER BY s.sort_order ASC, s.start_date ASC
+        ORDER BY s.order_index ASC, s.arrival_date ASC
     ');
     $stopsStmt->execute([$tripId]);
     $stops = $stopsStmt->fetchAll();
@@ -88,13 +88,13 @@ function list_stops_with_activities(PDO $pdo, int $userId, int $tripId): void {
     $placeholders = implode(',', array_fill(0, count($stopIds), '?'));
 
     $actStmt = $pdo->prepare("
-        SELECT sa.id, sa.stop_id, sa.activity_id, sa.scheduled_date, sa.scheduled_time,
-               sa.cost_override, sa.notes,
+        SELECT sa.id, sa.trip_stop_id AS stop_id, sa.activity_id, sa.scheduled_date, sa.scheduled_time,
+               sa.custom_cost AS cost_override, sa.notes,
                a.name, a.category, a.duration_hours,
-               COALESCE(sa.cost_override, a.cost) AS effective_cost
-        FROM stop_activities sa
+               COALESCE(sa.custom_cost, a.cost) AS effective_cost
+        FROM trip_activities sa
         JOIN activities a ON a.id = sa.activity_id
-        WHERE sa.stop_id IN ({$placeholders})
+        WHERE sa.trip_stop_id IN ({$placeholders})
         ORDER BY sa.scheduled_date ASC, sa.scheduled_time ASC NULLS LAST
     ");
     $actStmt->execute($stopIds);
@@ -134,7 +134,6 @@ function add_stop(PDO $pdo, int $userId, int $tripId): void {
         json_error('End date cannot be before start date');
     }
 
-    // Validate stop dates are within trip range
     $tripStmt = $pdo->prepare('SELECT start_date, end_date FROM trips WHERE id = ?');
     $tripStmt->execute([$tripId]);
     $trip = $tripStmt->fetch();
@@ -144,30 +143,27 @@ function add_stop(PDO $pdo, int $userId, int $tripId): void {
 
     $cityCheck = $pdo->prepare('SELECT 1 FROM cities WHERE id = ?');
     $cityCheck->execute([$cityId]);
-    if (!$cityCheck->fetch()) {
-        json_error('City not found', 404);
-    }
+    if (!$cityCheck->fetch()) json_error('City not found', 404);
 
-    $orderStmt = $pdo->prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 FROM stops WHERE trip_id = ?');
+    $orderStmt = $pdo->prepare('SELECT COALESCE(MAX(order_index), -1) + 1 FROM trip_stops WHERE trip_id = ?');
     $orderStmt->execute([$tripId]);
     $nextOrder = (int) $orderStmt->fetchColumn();
 
     $sortOrder = isset($body['sort_order']) ? (int) $body['sort_order'] : $nextOrder;
 
     $stmt = $pdo->prepare('
-        INSERT INTO stops (trip_id, city_id, start_date, end_date, sort_order)
+        INSERT INTO trip_stops (trip_id, city_id, arrival_date, departure_date, order_index)
         VALUES (?, ?, ?, ?, ?)
         RETURNING id
     ');
     $stmt->execute([$tripId, $cityId, $startDate, $endDate, $sortOrder]);
     $newId = (int) $stmt->fetchColumn();
 
-    // Return stop with city info
     $fetchStmt = $pdo->prepare('
-        SELECT s.id, s.city_id, s.start_date, s.end_date, s.sort_order,
-               s.transport_note, s.accommodation, s.accommodation_cost, s.stop_notes,
+        SELECT s.id, s.city_id, s.arrival_date AS start_date, s.departure_date AS end_date, s.order_index AS sort_order,
+               s.transport_note, s.accommodation, s.budget_for_stop AS accommodation_cost, s.notes AS stop_notes,
                c.name AS city_name, c.country AS city_country
-        FROM stops s JOIN cities c ON c.id = s.city_id
+        FROM trip_stops s JOIN cities c ON c.id = s.city_id
         WHERE s.id = ?
     ');
     $fetchStmt->execute([$newId]);
@@ -175,9 +171,7 @@ function add_stop(PDO $pdo, int $userId, int $tripId): void {
 }
 
 function update_stop(PDO $pdo, int $userId, int $stopId): void {
-    if (!user_owns_stop($pdo, $userId, $stopId)) {
-        json_error('Stop not found', 404);
-    }
+    if (!user_owns_stop($pdo, $userId, $stopId)) json_error('Stop not found', 404);
 
     $body   = get_request_body();
     $fields = [];
@@ -186,17 +180,17 @@ function update_stop(PDO $pdo, int $userId, int $stopId): void {
     if (isset($body['start_date'])) {
         $v = clean_str($body['start_date']);
         if (!is_valid_date($v)) json_error('Invalid start_date');
-        $fields[] = 'start_date = ?';
+        $fields[] = 'arrival_date = ?';
         $params[] = $v;
     }
     if (isset($body['end_date'])) {
         $v = clean_str($body['end_date']);
         if (!is_valid_date($v)) json_error('Invalid end_date');
-        $fields[] = 'end_date = ?';
+        $fields[] = 'departure_date = ?';
         $params[] = $v;
     }
     if (isset($body['sort_order'])) {
-        $fields[] = 'sort_order = ?';
+        $fields[] = 'order_index = ?';
         $params[] = (int) $body['sort_order'];
     }
     if (isset($body['city_id'])) {
@@ -213,20 +207,18 @@ function update_stop(PDO $pdo, int $userId, int $stopId): void {
     }
     if (array_key_exists('accommodation_cost', $body)) {
         $v = $body['accommodation_cost'];
-        $fields[] = 'accommodation_cost = ?';
+        $fields[] = 'budget_for_stop = ?';
         $params[] = ($v === '' || $v === null) ? null : (float) $v;
     }
     if (array_key_exists('stop_notes', $body)) {
-        $fields[] = 'stop_notes = ?';
+        $fields[] = 'notes = ?';
         $params[] = clean_str($body['stop_notes']);
     }
 
-    if (!$fields) {
-        json_error('No valid fields to update');
-    }
+    if (!$fields) json_error('No valid fields to update');
 
     $params[] = $stopId;
-    $sql = 'UPDATE stops SET ' . implode(', ', $fields) . ' WHERE id = ?';
+    $sql = 'UPDATE trip_stops SET ' . implode(', ', $fields) . ' WHERE id = ?';
     $pdo->prepare($sql)->execute($params);
 
     json_success(['updated' => true]);
@@ -234,9 +226,7 @@ function update_stop(PDO $pdo, int $userId, int $stopId): void {
 
 function reorder_stops(PDO $pdo, int $userId): void {
     $body = get_request_body();
-    if (!isset($body['stops']) || !is_array($body['stops'])) {
-        json_error('stops array is required');
-    }
+    if (!isset($body['stops']) || !is_array($body['stops'])) json_error('stops array is required');
 
     $pdo->beginTransaction();
     try {
@@ -250,8 +240,7 @@ function reorder_stops(PDO $pdo, int $userId): void {
                 json_error('Stop not found or access denied', 403);
             }
 
-            $pdo->prepare('UPDATE stops SET sort_order = ? WHERE id = ?')
-                ->execute([$sortOrder, $stopId]);
+            $pdo->prepare('UPDATE trip_stops SET order_index = ? WHERE id = ?')->execute([$sortOrder, $stopId]);
         }
         $pdo->commit();
         json_success(['reordered' => true]);
@@ -262,10 +251,8 @@ function reorder_stops(PDO $pdo, int $userId): void {
 }
 
 function delete_stop(PDO $pdo, int $userId, int $stopId): void {
-    if (!user_owns_stop($pdo, $userId, $stopId)) {
-        json_error('Stop not found', 404);
-    }
-    $pdo->prepare('DELETE FROM stops WHERE id = ?')->execute([$stopId]);
+    if (!user_owns_stop($pdo, $userId, $stopId)) json_error('Stop not found', 404);
+    $pdo->prepare('DELETE FROM trip_stops WHERE id = ?')->execute([$stopId]);
     json_success(['deleted' => true]);
 }
 
@@ -292,17 +279,15 @@ function route_stop_activities(PDO $pdo, int $userId, string $method): void {
 }
 
 function list_stop_activities(PDO $pdo, int $userId, int $stopId): void {
-    if (!user_owns_stop($pdo, $userId, $stopId)) {
-        json_error('Stop not found', 404);
-    }
+    if (!user_owns_stop($pdo, $userId, $stopId)) json_error('Stop not found', 404);
     $stmt = $pdo->prepare('
         SELECT sa.id, sa.activity_id, sa.scheduled_date, sa.scheduled_time,
-               sa.cost_override, sa.notes,
+               sa.custom_cost AS cost_override, sa.notes,
                a.name, a.category, a.duration_hours,
-               COALESCE(sa.cost_override, a.cost) AS effective_cost
-        FROM stop_activities sa
+               COALESCE(sa.custom_cost, a.cost) AS effective_cost
+        FROM trip_activities sa
         JOIN activities a ON a.id = sa.activity_id
-        WHERE sa.stop_id = ?
+        WHERE sa.trip_stop_id = ?
         ORDER BY sa.scheduled_date ASC, sa.scheduled_time ASC NULLS LAST
     ');
     $stmt->execute([$stopId]);
@@ -310,18 +295,13 @@ function list_stop_activities(PDO $pdo, int $userId, int $stopId): void {
 }
 
 function add_stop_activity(PDO $pdo, int $userId, int $stopId): void {
-    if (!user_owns_stop($pdo, $userId, $stopId)) {
-        json_error('Stop not found', 404);
-    }
+    if (!user_owns_stop($pdo, $userId, $stopId)) json_error('Stop not found', 404);
 
     $body = get_request_body();
 
-    // Bulk insert: { activity_ids: [1,2,3], scheduled_date: '...' }
     if (isset($body['activity_ids']) && is_array($body['activity_ids'])) {
         $scheduledDate = clean_str($body['scheduled_date'] ?? '');
-        if (!$scheduledDate || !is_valid_date($scheduledDate)) {
-            json_error('scheduled_date must be YYYY-MM-DD');
-        }
+        if (!$scheduledDate || !is_valid_date($scheduledDate)) json_error('scheduled_date must be YYYY-MM-DD');
 
         $inserted = [];
         foreach ($body['activity_ids'] as $actId) {
@@ -331,7 +311,7 @@ function add_stop_activity(PDO $pdo, int $userId, int $stopId): void {
             if (!$actCheck->fetch()) continue;
 
             $stmt = $pdo->prepare('
-                INSERT INTO stop_activities (stop_id, activity_id, scheduled_date)
+                INSERT INTO trip_activities (trip_stop_id, activity_id, scheduled_date)
                 VALUES (?, ?, ?)
                 RETURNING id
             ');
@@ -342,11 +322,11 @@ function add_stop_activity(PDO $pdo, int $userId, int $stopId): void {
         if ($inserted) {
             $placeholders = implode(',', array_fill(0, count($inserted), '?'));
             $detailStmt = $pdo->prepare("
-                SELECT sa.id, sa.stop_id, sa.activity_id, sa.scheduled_date, sa.scheduled_time,
-                       sa.cost_override, sa.notes,
+                SELECT sa.id, sa.trip_stop_id AS stop_id, sa.activity_id, sa.scheduled_date, sa.scheduled_time,
+                       sa.custom_cost AS cost_override, sa.notes,
                        a.name, a.category, a.duration_hours,
-                       COALESCE(sa.cost_override, a.cost) AS effective_cost
-                FROM stop_activities sa
+                       COALESCE(sa.custom_cost, a.cost) AS effective_cost
+                FROM trip_activities sa
                 JOIN activities a ON a.id = sa.activity_id
                 WHERE sa.id IN ({$placeholders})
                 ORDER BY sa.scheduled_date ASC
@@ -358,24 +338,17 @@ function add_stop_activity(PDO $pdo, int $userId, int $stopId): void {
         return;
     }
 
-    // Single insert
     $missing = missing_fields($body, ['activity_id', 'scheduled_date']);
-    if ($missing) {
-        json_error('Missing required field(s): ' . implode(', ', $missing));
-    }
+    if ($missing) json_error('Missing required field(s): ' . implode(', ', $missing));
 
-    if (!is_valid_date(clean_str($body['scheduled_date']))) {
-        json_error('scheduled_date must be YYYY-MM-DD');
-    }
+    if (!is_valid_date(clean_str($body['scheduled_date']))) json_error('scheduled_date must be YYYY-MM-DD');
 
     $activityCheck = $pdo->prepare('SELECT 1 FROM activities WHERE id = ?');
     $activityCheck->execute([(int) $body['activity_id']]);
-    if (!$activityCheck->fetch()) {
-        json_error('Activity not found', 404);
-    }
+    if (!$activityCheck->fetch()) json_error('Activity not found', 404);
 
     $stmt = $pdo->prepare('
-        INSERT INTO stop_activities (stop_id, activity_id, scheduled_date, scheduled_time, cost_override, notes)
+        INSERT INTO trip_activities (trip_stop_id, activity_id, scheduled_date, scheduled_time, custom_cost, notes)
         VALUES (?, ?, ?, ?, ?, ?)
         RETURNING id
     ');
@@ -393,15 +366,13 @@ function add_stop_activity(PDO $pdo, int $userId, int $stopId): void {
 
 function delete_stop_activity(PDO $pdo, int $userId, int $id): void {
     $stmt = $pdo->prepare('
-        SELECT sa.id FROM stop_activities sa
-        JOIN stops s ON s.id = sa.stop_id
+        SELECT sa.id FROM trip_activities sa
+        JOIN trip_stops s ON s.id = sa.trip_stop_id
         JOIN trips t ON t.id = s.trip_id
         WHERE sa.id = ? AND t.user_id = ?
     ');
     $stmt->execute([$id, $userId]);
-    if (!$stmt->fetch()) {
-        json_error('Not found', 404);
-    }
-    $pdo->prepare('DELETE FROM stop_activities WHERE id = ?')->execute([$id]);
+    if (!$stmt->fetch()) json_error('Not found', 404);
+    $pdo->prepare('DELETE FROM trip_activities WHERE id = ?')->execute([$id]);
     json_success(['deleted' => true]);
 }

@@ -21,7 +21,7 @@ switch ($method) {
 
 function handle_get(PDO $pdo, int $userId): void {
     $stmt = $pdo->prepare('
-        SELECT id, name, email, profile_photo, language_pref, is_admin, created_at
+        SELECT id, first_name AS name, email, profile_photo, role, created_at
         FROM users WHERE id = ?
     ');
     $stmt->execute([$userId]);
@@ -41,13 +41,8 @@ function handle_update(PDO $pdo, int $userId): void {
     $params = [];
 
     if (isset($body['name']) && trim($body['name']) !== '') {
-        $fields[] = 'name = ?';
+        $fields[] = 'first_name = ?';
         $params[] = clean_str($body['name']);
-    }
-
-    if (isset($body['language_pref']) && trim($body['language_pref']) !== '') {
-        $fields[] = 'language_pref = ?';
-        $params[] = clean_str($body['language_pref']);
     }
 
     if (isset($body['email']) && trim($body['email']) !== '') {

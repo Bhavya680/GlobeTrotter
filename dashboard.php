@@ -5,10 +5,10 @@ $userId = require_login_page();
 $user = current_user();
 
 $upcomingStmt = $pdo->prepare('
-    SELECT t.id, t.name, t.start_date, t.end_date, t.cover_photo,
+    SELECT t.id, t.trip_name AS name, t.start_date, t.end_date, t.cover_photo,
            COUNT(DISTINCT s.city_id) AS destination_count
     FROM trips t
-    LEFT JOIN stops s ON s.trip_id = t.id
+    LEFT JOIN trip_stops s ON s.trip_id = t.id
     WHERE t.user_id = ? AND t.end_date >= CURRENT_DATE
     GROUP BY t.id
     ORDER BY t.start_date ASC
@@ -18,7 +18,7 @@ $upcomingStmt->execute([$userId]);
 $upcomingTrips = $upcomingStmt->fetchAll();
 
 $recentStmt = $pdo->prepare('
-    SELECT t.id, t.name, t.start_date, t.end_date, t.cover_photo
+    SELECT t.id, t.trip_name AS name, t.start_date, t.end_date, t.cover_photo
     FROM trips t
     WHERE t.user_id = ?
     ORDER BY t.created_at DESC
@@ -28,15 +28,15 @@ $recentStmt->execute([$userId]);
 $recentTrips = $recentStmt->fetchAll();
 
 $recommendedStmt = $pdo->prepare('
-    SELECT c.id, c.name, c.country, c.cost_index, c.popularity, c.image_url
+    SELECT c.id, c.name, c.country, c.cost_index, c.popularity_score AS popularity, c.image_url
     FROM cities c
     WHERE c.id NOT IN (
         SELECT DISTINCT s.city_id
-        FROM stops s
+        FROM trip_stops s
         JOIN trips t ON t.id = s.trip_id
         WHERE t.user_id = ?
     )
-    ORDER BY c.popularity DESC
+    ORDER BY c.popularity_score DESC
     LIMIT 6
 ');
 $recommendedStmt->execute([$userId]);
@@ -44,16 +44,16 @@ $recommendedCities = $recommendedStmt->fetchAll();
 
 $budgetStmt = $pdo->prepare('
     SELECT
-        COALESCE(SUM(b.amount), 0) AS manual_total,
+        COALESCE(SUM(b.total_budget), 0) AS manual_total,
         (
-            SELECT COALESCE(SUM(COALESCE(sa.cost_override, a.cost)), 0)
-            FROM stop_activities sa
+            SELECT COALESCE(SUM(COALESCE(sa.custom_cost, a.cost)), 0)
+            FROM trip_activities sa
             JOIN activities a ON a.id = sa.activity_id
-            JOIN stops s ON s.id = sa.stop_id
+            JOIN trip_stops s ON s.id = sa.trip_stop_id
             JOIN trips t2 ON t2.id = s.trip_id
             WHERE t2.user_id = ?
         ) AS activities_total
-    FROM budget_items b
+    FROM trip_budget b
     JOIN trips t ON t.id = b.trip_id
     WHERE t.user_id = ?
 ');
@@ -63,6 +63,35 @@ $budgetHighlights = [
     'total_planned' => round((float) $budgetRow['manual_total'] + (float) $budgetRow['activities_total'], 2),
     'trip_count' => (int) $pdo->query('SELECT COUNT(*) FROM trips WHERE user_id = ' . (int) $userId)->fetchColumn(),
 ];
+
+$firstName = htmlspecialchars($user['first_name'] ?? 'Traveler');
+
+$statsStmt = $pdo->prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN end_date >= CURRENT_DATE THEN 1 ELSE 0 END) AS upcoming, SUM(CASE WHEN end_date < CURRENT_DATE THEN 1 ELSE 0 END) AS completed FROM trips WHERE user_id = ?');
+$statsStmt->execute([$userId]);
+$statsRow = $statsStmt->fetch();
+$stats = [
+    'total_trips' => (int) $statsRow['total'],
+    'upcoming_count' => (int) $statsRow['upcoming'],
+    'completed_count' => (int) $statsRow['completed']
+];
+
+$countriesStmt = $pdo->prepare('SELECT COUNT(DISTINCT c.country) FROM trip_stops s JOIN trips t ON t.id = s.trip_id JOIN cities c ON c.id = s.city_id WHERE t.user_id = ?');
+$countriesStmt->execute([$userId]);
+$countriesVisited = (int) $countriesStmt->fetchColumn();
+
+$regions = [
+    ['key' => 'Europe', 'label' => 'Europe', 'class' => 'bg-europe'],
+    ['key' => 'Asia', 'label' => 'Asia', 'class' => 'bg-asia'],
+    ['key' => 'North America', 'label' => 'North America', 'class' => 'bg-na'],
+    ['key' => 'South America', 'label' => 'South America', 'class' => 'bg-sa'],
+    ['key' => 'Africa', 'label' => 'Africa', 'class' => 'bg-africa'],
+    ['key' => 'Oceania', 'label' => 'Oceania', 'class' => 'bg-oceania'],
+];
+$regionCounts = [];
+
+$pageTitle = 'Dashboard — GlobeTrotter';
+$loadDashboardCSS = true;
+
 require_once __DIR__ . '/includes/header.php';
 ?>
 <!-- ======================================================================

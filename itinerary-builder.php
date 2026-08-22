@@ -13,7 +13,7 @@ if (!$tripId) {
 
 // ── Fetch trip (must belong to user) ──────────────────────────────────────────
 $tripStmt = $pdo->prepare(
-    'SELECT id, name, start_date, end_date, description FROM trips WHERE id = ? AND user_id = ?'
+    'SELECT id, trip_name AS name, start_date, end_date, description FROM trips WHERE id = ? AND user_id = ?'
 );
 $tripStmt->execute([$tripId, $userId]);
 $trip = $tripStmt->fetch();
@@ -25,13 +25,13 @@ if (!$trip) {
 
 // ── Fetch stops with activities ───────────────────────────────────────────────
 $stopsStmt = $pdo->prepare('
-    SELECT s.id, s.city_id, s.start_date, s.end_date, s.sort_order,
-           s.transport_note, s.accommodation, s.accommodation_cost, s.stop_notes,
+    SELECT s.id, s.city_id, s.arrival_date AS start_date, s.departure_date AS end_date, s.order_index AS sort_order,
+           s.transport_note, s.accommodation, s.budget_for_stop AS accommodation_cost, s.notes AS stop_notes,
            c.name AS city_name, c.country AS city_country
-    FROM stops s
+    FROM trip_stops s
     JOIN cities c ON c.id = s.city_id
     WHERE s.trip_id = ?
-    ORDER BY s.sort_order ASC, s.start_date ASC
+    ORDER BY s.order_index ASC, s.arrival_date ASC
 ');
 $stopsStmt->execute([$tripId]);
 $stops = $stopsStmt->fetchAll();
@@ -40,13 +40,13 @@ if ($stops) {
     $stopIds      = array_column($stops, 'id');
     $placeholders = implode(',', array_fill(0, count($stopIds), '?'));
     $actStmt      = $pdo->prepare("
-        SELECT sa.id, sa.stop_id, sa.activity_id, sa.scheduled_date, sa.scheduled_time,
-               sa.cost_override, sa.notes,
+        SELECT sa.id, sa.trip_stop_id AS stop_id, sa.activity_id, sa.scheduled_date, sa.scheduled_time,
+               sa.custom_cost AS cost_override, sa.notes,
                a.name, a.category, a.duration_hours,
-               COALESCE(sa.cost_override, a.cost) AS effective_cost
-        FROM stop_activities sa
+               COALESCE(sa.custom_cost, a.cost) AS effective_cost
+        FROM trip_activities sa
         JOIN activities a ON a.id = sa.activity_id
-        WHERE sa.stop_id IN ({$placeholders})
+        WHERE sa.trip_stop_id IN ({$placeholders})
         ORDER BY sa.scheduled_date ASC, sa.scheduled_time ASC NULLS LAST
     ");
     $actStmt->execute($stopIds);

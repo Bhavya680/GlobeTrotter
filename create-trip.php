@@ -3,11 +3,8 @@
 $pageTitle    = 'Plan a New Trip — GlobeTrotter';
 $loadTripsCSS = true;
 require_once __DIR__ . '/includes/auth.php';
-requireLogin();
-
-$pdo    = DB::getInstance();
-$userId = (int) $_SESSION['user_id'];
-
+$userId = require_login_page();
+$user = current_user();
 // ── Edit mode: pre-fill if trip_id provided ───────────────────────────────
 $editMode  = false;
 $trip      = null;

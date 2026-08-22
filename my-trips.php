@@ -6,11 +6,10 @@ $loadTripsCSS = true;
 require_once __DIR__ . '/includes/auth.php';
 
 $userId = require_login_page();
-$pdo = DB::getInstance();
-
+$user = current_user();
 // ── Fetch all trips with stop count + cities list ─────────────────────────
 $tripsQ = $pdo->prepare("
-    SELECT t.id, t.name AS trip_name, t.start_date, t.end_date, t.cover_photo, t.is_public as visibility,
+    SELECT t.id, t.trip_name, t.start_date, t.end_date, t.cover_photo, t.visibility,
            COUNT(DISTINCT s.id) AS stop_count,
            STRING_AGG(DISTINCT c.name, ', ') AS cities_list,
            COUNT(DISTINCT c.country) AS countries_count,
@@ -20,7 +19,7 @@ $tripsQ = $pdo->prepare("
                ELSE 'upcoming'
            END AS status
     FROM trips t
-    LEFT JOIN stops s ON s.trip_id = t.id
+    LEFT JOIN trip_stops s ON s.trip_id = t.id
     LEFT JOIN cities c ON c.id = s.city_id
     WHERE t.user_id = ?
     GROUP BY t.id
@@ -50,7 +49,7 @@ foreach ($tripsByStatus['completed'] as $t) {
 $countriesQ = $pdo->prepare("
     SELECT COUNT(DISTINCT c.country) AS cnt
     FROM trips t
-    JOIN stops s ON s.trip_id = t.id
+    JOIN trip_stops s ON s.trip_id = t.id
     JOIN cities c ON c.id = s.city_id
     WHERE t.user_id = ? AND t.end_date < CURRENT_DATE
 ");

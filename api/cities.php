@@ -5,12 +5,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     json_error('Method not allowed', 405);
 }
 
-$q = clean_str($_GET['q'] ?? '');
+$q = clean_str($_GET['q'] ?? $_GET['search'] ?? '');
 $country = clean_str($_GET['country'] ?? '');
 $region = clean_str($_GET['region'] ?? '');
 $sort = clean_str($_GET['sort'] ?? 'popularity');
 $page = max(1, (int) ($_GET['page'] ?? 1));
-$perPage = min(50, max(1, (int) ($_GET['per_page'] ?? 20)));
+$perPage = min(50, max(1, (int) ($_GET['per_page'] ?? $_GET['limit'] ?? 20)));
 $offset = ($page - 1) * $perPage;
 
 $where = [];
@@ -35,7 +35,7 @@ $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 $sortColumn = match ($sort) {
     'name'       => 'name ASC',
     'cost_index' => 'cost_index ASC',
-    default      => 'popularity DESC',
+    default      => 'popularity_score DESC',
 };
 
 $countStmt = $pdo->prepare("SELECT COUNT(*) FROM cities {$whereSql}");
@@ -43,7 +43,7 @@ $countStmt->execute($params);
 $total = (int) $countStmt->fetchColumn();
 
 $sql = "
-    SELECT id, name, country, region, cost_index, popularity, image_url
+    SELECT id, name, country, region, cost_index, popularity_score AS popularity, image_url
     FROM cities
     {$whereSql}
     ORDER BY {$sortColumn}

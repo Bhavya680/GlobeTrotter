@@ -22,15 +22,16 @@ switch ($method) {
         json_error('Method not allowed', 405);
 }
 
-function get_list(PDO $pdo, int $userId): void {
+function get_list(PDO $pdo, int $userId): void
+{
     $stmt = $pdo->prepare('
         SELECT
-            t.id, t.name, t.start_date, t.end_date, t.description, t.cover_photo,
-            t.is_public, t.share_slug,
+            t.id, t.trip_name AS name, t.start_date, t.end_date, t.description, t.cover_photo,
+            (t.visibility = 'public') AS is_public, NULL AS share_slug,
             COUNT(DISTINCT s.id) AS stop_count,
             COUNT(DISTINCT s.city_id) AS destination_count
         FROM trips t
-        LEFT JOIN stops s ON s.trip_id = t.id
+        LEFT JOIN trip_stops s ON s.trip_id = t.id
         WHERE t.user_id = ?
         GROUP BY t.id
         ORDER BY t.start_date DESC
@@ -39,7 +40,8 @@ function get_list(PDO $pdo, int $userId): void {
     json_success($stmt->fetchAll());
 }
 
-function get_one(PDO $pdo, int $userId, int $tripId): void {
+function get_one(PDO $pdo, int $userId, int $tripId): void
+{
     $stmt = $pdo->prepare('SELECT * FROM trips WHERE id = ? AND user_id = ?');
     $stmt->execute([$tripId, $userId]);
     $trip = $stmt->fetch();
@@ -49,12 +51,12 @@ function get_one(PDO $pdo, int $userId, int $tripId): void {
     }
 
     $stopsStmt = $pdo->prepare('
-        SELECT s.id, s.city_id, s.start_date, s.end_date, s.sort_order,
+        SELECT s.id, s.city_id, s.arrival_date AS start_date, s.departure_date AS end_date, s.order_index AS sort_order,
                c.name AS city_name, c.country AS city_country, c.image_url AS city_image
-        FROM stops s
+        FROM trip_stops s
         JOIN cities c ON c.id = s.city_id
         WHERE s.trip_id = ?
-        ORDER BY s.sort_order ASC, s.start_date ASC
+        ORDER BY s.order_index ASC, s.arrival_date ASC
     ');
     $stopsStmt->execute([$tripId]);
     $trip['stops'] = $stopsStmt->fetchAll();
@@ -62,7 +64,8 @@ function get_one(PDO $pdo, int $userId, int $tripId): void {
     json_success($trip);
 }
 
-function create_trip(PDO $pdo, int $userId): void {
+function create_trip(PDO $pdo, int $userId): void
+{
     $body = !empty($_FILES) ? $_POST : get_request_body();
 
     $missing = missing_fields($body, ['name', 'start_date', 'end_date']);
@@ -100,7 +103,8 @@ function create_trip(PDO $pdo, int $userId): void {
     get_one($pdo, $userId, $newId);
 }
 
-function update_trip(PDO $pdo, int $userId, int $tripId): void {
+function update_trip(PDO $pdo, int $userId, int $tripId): void
+{
     if (!user_owns_trip($pdo, $userId, $tripId)) {
         json_error('Trip not found', 404);
     }
@@ -120,12 +124,14 @@ function update_trip(PDO $pdo, int $userId, int $tripId): void {
     $endDate = isset($body['end_date']) ? clean_str($body['end_date']) : null;
 
     if ($startDate !== null) {
-        if (!is_valid_date($startDate)) json_error('Invalid start_date');
+        if (!is_valid_date($startDate))
+            json_error('Invalid start_date');
         $fields[] = 'start_date = ?';
         $params[] = $startDate;
     }
     if ($endDate !== null) {
-        if (!is_valid_date($endDate)) json_error('Invalid end_date');
+        if (!is_valid_date($endDate))
+            json_error('Invalid end_date');
         $fields[] = 'end_date = ?';
         $params[] = $endDate;
     }
@@ -142,8 +148,8 @@ function update_trip(PDO $pdo, int $userId, int $tripId): void {
 
     if (isset($body['is_public'])) {
         $isPublic = filter_var($body['is_public'], FILTER_VALIDATE_BOOLEAN);
-        $fields[] = 'is_public = ?';
-        $params[] = $isPublic;
+        $fields[] = 'visibility = ?';
+        $params[] = $isPublic ? 'public' : 'private';
 
         if ($isPublic) {
             $current = $pdo->prepare('SELECT share_slug FROM trips WHERE id = ?');
@@ -179,7 +185,8 @@ function update_trip(PDO $pdo, int $userId, int $tripId): void {
     get_one($pdo, $userId, $tripId);
 }
 
-function delete_trip(PDO $pdo, int $userId, int $tripId): void {
+function delete_trip(PDO $pdo, int $userId, int $tripId): void
+{
     if (!user_owns_trip($pdo, $userId, $tripId)) {
         json_error('Trip not found', 404);
     }

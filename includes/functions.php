@@ -112,3 +112,37 @@ function handle_image_upload(string $fieldName, string $subDir): ?string {
 
     return UPLOAD_URL_BASE . '/' . $subDir . '/' . $filename;
 }
+
+function setFlash(string $type, string $message): void {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $_SESSION['flash'] = [
+        'type' => $type,
+        'message' => $message,
+    ];
+}
+
+function getFlash(): ?array {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (isset($_SESSION['flash'])) {
+        $flash = $_SESSION['flash'];
+        unset($_SESSION['flash']);
+        return $flash;
+    }
+    return null;
+}
+
+function getTripStatus(string $startDate, string $endDate): string {
+    $today = date('Y-m-d');
+    if ($endDate < $today) return 'completed';
+    if ($startDate <= $today && $endDate >= $today) return 'ongoing';
+    return 'upcoming';
+}
+
+function redirect(string $url): void {
+    header("Location: $url");
+    exit;
+}

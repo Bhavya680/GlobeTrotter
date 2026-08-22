@@ -23,11 +23,11 @@ switch ($method) {
 
 function get_public_trip(PDO $pdo, string $slug): void {
     $stmt = $pdo->prepare('
-        SELECT t.id, t.name, t.start_date, t.end_date, t.description, t.cover_photo,
-               u.name AS owner_name
+        SELECT t.id, t.trip_name AS name, t.start_date, t.end_date, t.description, t.cover_photo,
+               u.first_name AS owner_name
         FROM trips t
         JOIN users u ON u.id = t.user_id
-        WHERE t.share_slug = ? AND t.is_public = TRUE
+        WHERE t.share_slug = ? AND t.visibility = 'public'
     ');
     $stmt->execute([$slug]);
     $trip = $stmt->fetch();
@@ -37,12 +37,12 @@ function get_public_trip(PDO $pdo, string $slug): void {
     }
 
     $stopsStmt = $pdo->prepare('
-        SELECT s.id, s.city_id, s.start_date, s.end_date, s.sort_order,
+        SELECT s.id, s.city_id, s.arrival_date AS start_date, s.departure_date AS end_date, s.order_index AS sort_order,
                c.name AS city_name, c.country AS city_country
-        FROM stops s
+        FROM trip_stops s
         JOIN cities c ON c.id = s.city_id
         WHERE s.trip_id = ?
-        ORDER BY s.sort_order ASC
+        ORDER BY s.order_index ASC
     ');
     $stopsStmt->execute([$trip['id']]);
     $stops = $stopsStmt->fetchAll();
@@ -50,9 +50,9 @@ function get_public_trip(PDO $pdo, string $slug): void {
     foreach ($stops as &$stop) {
         $actStmt = $pdo->prepare('
             SELECT a.name, a.category, a.duration_hours, sa.scheduled_date, sa.scheduled_time
-            FROM stop_activities sa
+            FROM trip_activities sa
             JOIN activities a ON a.id = sa.activity_id
-            WHERE sa.stop_id = ?
+            WHERE sa.trip_stop_id = ?
             ORDER BY sa.scheduled_date, sa.scheduled_time NULLS LAST
         ');
         $actStmt->execute([$stop['id']]);
@@ -74,7 +74,7 @@ function copy_trip(PDO $pdo): void {
         json_error('slug is required');
     }
 
-    $source = $pdo->prepare('SELECT * FROM trips WHERE share_slug = ? AND is_public = TRUE');
+    $source = $pdo->prepare("SELECT * FROM trips WHERE share_slug = ? AND visibility = 'public'");
     $source->execute([$slug]);
     $sourceTrip = $source->fetch();
 
@@ -85,13 +85,13 @@ function copy_trip(PDO $pdo): void {
     $pdo->beginTransaction();
     try {
         $newTripStmt = $pdo->prepare('
-            INSERT INTO trips (user_id, name, start_date, end_date, description, cover_photo, is_public)
-            VALUES (?, ?, ?, ?, ?, ?, FALSE)
+            INSERT INTO trips (user_id, trip_name, start_date, end_date, description, cover_photo, visibility)
+            VALUES (?, ?, ?, ?, ?, ?, 'private')
             RETURNING id
         ');
         $newTripStmt->execute([
             $userId,
-            $sourceTrip['name'] . ' (copy)',
+            $sourceTrip['trip_name'] . ' (copy)',
             $sourceTrip['start_date'],
             $sourceTrip['end_date'],
             $sourceTrip['description'],
@@ -99,19 +99,19 @@ function copy_trip(PDO $pdo): void {
         ]);
         $newTripId = (int) $newTripStmt->fetchColumn();
 
-        $stopsStmt = $pdo->prepare('SELECT * FROM stops WHERE trip_id = ? ORDER BY sort_order');
+        $stopsStmt = $pdo->prepare('SELECT id, city_id, arrival_date AS start_date, departure_date AS end_date, order_index AS sort_order FROM trip_stops WHERE trip_id = ? ORDER BY order_index');
         $stopsStmt->execute([$sourceTrip['id']]);
 
         $insertStop = $pdo->prepare('
-            INSERT INTO stops (trip_id, city_id, start_date, end_date, sort_order)
+            INSERT INTO trip_stops (trip_id, city_id, arrival_date, departure_date, order_index)
             VALUES (?, ?, ?, ?, ?)
             RETURNING id
         ');
         $insertActivity = $pdo->prepare('
-            INSERT INTO stop_activities (stop_id, activity_id, scheduled_date, scheduled_time, notes)
+            INSERT INTO trip_activities (trip_stop_id, activity_id, scheduled_date, scheduled_time, notes)
             VALUES (?, ?, ?, ?, ?)
         ');
-        $sourceActivities = $pdo->prepare('SELECT * FROM stop_activities WHERE stop_id = ?');
+        $sourceActivities = $pdo->prepare('SELECT activity_id, scheduled_date, scheduled_time, notes FROM trip_activities WHERE trip_stop_id = ?');
 
         foreach ($stopsStmt->fetchAll() as $stop) {
             $insertStop->execute([$newTripId, $stop['city_id'], $stop['start_date'], $stop['end_date'], $stop['sort_order']]);

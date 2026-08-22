@@ -46,10 +46,10 @@ function get_breakdown(PDO $pdo, int $userId, int $tripId): void {
     }
 
     $activityStmt = $pdo->prepare('
-        SELECT COALESCE(SUM(COALESCE(sa.cost_override, a.cost)), 0) AS total
-        FROM stop_activities sa
+        SELECT COALESCE(SUM(COALESCE(sa.custom_cost, a.cost)), 0) AS total
+        FROM trip_activities sa
         JOIN activities a ON a.id = sa.activity_id
-        JOIN stops s ON s.id = sa.stop_id
+        JOIN trip_stops s ON s.id = sa.trip_stop_id
         WHERE s.trip_id = ?
     ');
     $activityStmt->execute([$tripId]);
@@ -59,10 +59,10 @@ function get_breakdown(PDO $pdo, int $userId, int $tripId): void {
 
     $perDayStmt = $pdo->prepare('
         SELECT day, SUM(amount) AS total FROM (
-            SELECT sa.scheduled_date AS day, COALESCE(sa.cost_override, a.cost) AS amount
-            FROM stop_activities sa
+            SELECT sa.scheduled_date AS day, COALESCE(sa.custom_cost, a.cost) AS amount
+            FROM trip_activities sa
             JOIN activities a ON a.id = sa.activity_id
-            JOIN stops s ON s.id = sa.stop_id
+            JOIN trip_stops s ON s.id = sa.trip_stop_id
             WHERE s.trip_id = ?
             UNION ALL
             SELECT spent_on AS day, amount

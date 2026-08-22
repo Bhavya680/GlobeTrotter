@@ -2,6 +2,7 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/functions.php';
 
+// New functions
 function current_user_id(): ?int {
     return isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
 }
@@ -26,11 +27,9 @@ function logout_user(): void {
 
 function current_user(): ?array {
     $userId = current_user_id();
-    if ($userId === null) {
-        return null;
-    }
+    if ($userId === null) return null;
     global $pdo;
-    $stmt = $pdo->prepare('SELECT id, name, email, profile_photo, language_pref, is_admin, created_at FROM users WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT id, first_name, last_name, email, role, profile_photo, created_at FROM users WHERE id = ?');
     $stmt->execute([$userId]);
     $user = $stmt->fetch();
     return $user ?: null;
@@ -38,7 +37,7 @@ function current_user(): ?array {
 
 function is_admin_user(): bool {
     $user = current_user();
-    return $user !== null && (bool) $user['is_admin'];
+    return $user !== null && $user['role'] === 'admin';
 }
 
 function require_login(): int {
@@ -73,10 +72,53 @@ function user_owns_trip(PDO $pdo, int $userId, int $tripId): bool {
 
 function user_owns_stop(PDO $pdo, int $userId, int $stopId): bool {
     $stmt = $pdo->prepare('
-        SELECT 1 FROM stops s
+        SELECT 1 FROM trip_stops s
         JOIN trips t ON t.id = s.trip_id
         WHERE s.id = ? AND t.user_id = ?
     ');
     $stmt->execute([$stopId, $userId]);
     return (bool) $stmt->fetch();
+}
+
+// Old backwards-compatible functions
+function isLoggedIn() {
+    return is_logged_in();
+}
+
+function requireLogin() {
+    if (!is_logged_in()) {
+        redirect('login.php');
+    }
+}
+
+function requireAdmin() {
+    requireLogin();
+    if (!is_admin_user()) {
+        redirect('dashboard.php');
+    }
+}
+
+function getCurrentUser() {
+    return current_user();
+}
+
+function login($email, $password) {
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT id, first_name, password_hash, role FROM users WHERE email = ?");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+
+    if ($user && password_verify($password, $user['password_hash'])) {
+        session_regenerate_id(true);
+        $_SESSION['user_id']    = $user['id'];
+        $_SESSION['role']       = $user['role'];
+        $_SESSION['first_name'] = $user['first_name'];
+        return true;
+    }
+    return false;
+}
+
+function logout() {
+    logout_user();
+    redirect('login.php');
 }

@@ -9,12 +9,12 @@ if (!is_admin_user()) {
 
 $totalUsers = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
 $totalTrips = (int) $pdo->query('SELECT COUNT(*) FROM trips')->fetchColumn();
-$totalPublicTrips = (int) $pdo->query('SELECT COUNT(*) FROM trips WHERE is_public = TRUE')->fetchColumn();
-$totalStops = (int) $pdo->query('SELECT COUNT(*) FROM stops')->fetchColumn();
+$totalPublicTrips = (int) $pdo->query("SELECT COUNT(*) FROM trips WHERE visibility = 'public'")->fetchColumn();
+$totalStops = (int) $pdo->query('SELECT COUNT(*) FROM trip_stops')->fetchColumn();
 
 $topCitiesStmt = $pdo->query('
     SELECT c.name, c.country, COUNT(s.id) AS times_used
-    FROM stops s
+    FROM trip_stops s
     JOIN cities c ON c.id = s.city_id
     GROUP BY c.id
     ORDER BY times_used DESC
@@ -24,7 +24,7 @@ $topCities = $topCitiesStmt->fetchAll();
 
 $topActivitiesStmt = $pdo->query('
     SELECT a.name, a.category, COUNT(sa.id) AS times_scheduled
-    FROM stop_activities sa
+    FROM trip_activities sa
     JOIN activities a ON a.id = sa.activity_id
     GROUP BY a.id
     ORDER BY times_scheduled DESC
@@ -45,7 +45,7 @@ $signupTrendStmt = $pdo->query("
 $signupTrend = $signupTrendStmt->fetchAll();
 
 $recentUsersStmt = $pdo->query('
-    SELECT id, name, email, is_admin, created_at
+    SELECT id, first_name AS name, email, role, created_at
     FROM users
     ORDER BY created_at DESC
     LIMIT 20

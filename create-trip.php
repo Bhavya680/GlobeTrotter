@@ -51,9 +51,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Cover photo
     $coverPhoto = $trip['cover_photo'] ?? null;
     if (!empty($_FILES['cover_photo']['name'])) {
-        $uploaded = uploadFile($_FILES['cover_photo'], 'covers');
-        if ($uploaded) { $coverPhoto = $uploaded; }
-        else           { $errors['cover_photo'] = 'Invalid file. Max 2MB, jpg/png/webp only.'; }
+        try {
+            $uploaded = handle_image_upload('cover_photo', 'covers');
+            if ($uploaded) { $coverPhoto = $uploaded; }
+        } catch (Throwable $ex) {
+            $errors['cover_photo'] = $ex->getMessage();
+        }
     }
 
     // Parse stops
@@ -132,9 +135,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setFlash('success', $editMode ? 'Trip updated!' : 'Trip created! Start building your itinerary.');
             redirect("itinerary-builder.php?trip_id={$savedTripId}");
 
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            $errors['db'] = 'Something went wrong. Please try again.';
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $errors['db'] = 'Failed to save trip: ' . $e->getMessage();
         }
     }
 }

@@ -1,0 +1,237 @@
+/* =============================================
+   GlobeTrotter – Itinerary View Styles
+   ============================================= */
+
+/* ── Top Bar ──────────────────────────────────────────── */
+.iv-topbar {
+    background: #fff;
+    border-bottom: 1px solid var(--ib-border);
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 56px;
+    z-index: 90;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.iv-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.iv-search-wrap {
+    position: relative;
+    max-width: 300px;
+    width: 100%;
+}
+
+.iv-search-wrap i {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+}
+
+.iv-search-input {
+    width: 100%;
+    padding: 0.5rem 1rem 0.5rem 2rem;
+    border: 1px solid var(--ib-border);
+    border-radius: var(--ib-radius-sm);
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.iv-search-input:focus {
+    border-color: var(--ib-primary);
+}
+
+/* ── Trip Header ───────────────────────────────────────── */
+.iv-header {
+    position: relative;
+    height: 350px;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: flex-end;
+    padding: 2rem;
+    color: #fff;
+}
+
+.iv-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.2) 60%, rgba(15, 23, 42, 0.4) 100%);
+}
+
+.iv-header-content {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.iv-header h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+}
+
+.iv-header-meta {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.iv-badge {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* ── Layout ────────────────────────────────────────────── */
+.iv-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 2rem;
+}
+
+@media (max-width: 991px) {
+    .iv-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Itinerary Timeline ─────────────────────────────────── */
+.iv-day {
+    margin-bottom: 2.5rem;
+}
+
+.iv-day-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--ib-primary);
+    padding-bottom: 0.5rem;
+}
+
+.iv-day-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ib-dark);
+}
+
+.iv-day-date {
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.iv-activity-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 0.5rem;
+}
+
+.iv-activity-table th {
+    text-align: left;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #94a3b8;
+    padding: 0 1rem;
+}
+
+.iv-activity-row {
+    background: #fff;
+    box-shadow: var(--ib-shadow-sm);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.iv-activity-row td {
+    padding: 1rem;
+    background: #fff;
+}
+
+.iv-activity-row td:first-child {
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+}
+
+.iv-activity-row td:last-child {
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+.iv-activity-row:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--ib-shadow-md);
+}
+
+.iv-act-name {
+    font-weight: 600;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.iv-act-meta {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.2rem;
+}
+
+.iv-act-cost {
+    font-weight: 600;
+    color: #059669;
+}
+
+/* ── Sidebar & Budget Section ───────────────────────────── */
+.iv-sidebar {
+    position: sticky;
+    top: 130px;
+}
+
+.iv-card {
+    background: #fff;
+    border-radius: var(--ib-radius);
+    padding: 1.5rem;
+    box-shadow: var(--ib-shadow-md);
+    border: 1px solid var(--ib-border);
+    margin-bottom: 1.5rem;
+}
+
+.iv-card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--ib-dark);
+}
+
+/* Print CSS */
+@media print {
+    body { background: #fff; }
+    .navbar, .iv-topbar, .iv-sidebar, .btn, .iv-header-meta { display: none !important; }
+    .iv-container { display: block; padding: 0; }
+    .iv-header { height: auto; padding: 1rem 0; background: none; color: #000; }
+    .iv-header::before { display: none; }
+    .iv-header h1 { color: #000; }
+    .iv-activity-row { border: 1px solid #ccc; box-shadow: none; break-inside: avoid; }
+}

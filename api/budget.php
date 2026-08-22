@@ -1,159 +1,164 @@
 <?php
-require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/functions.php';
 
-$userId = require_login();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($_SESSION['user_id'])) {
+    echo json_encode(['error' => 'Unauthorized']);
+    http_response_code(401);
+    exit;
+}
+
+$userId = $_SESSION['user_id'];
 $method = $_SERVER['REQUEST_METHOD'];
 
-switch ($method) {
-    case 'GET':
-        $tripId = isset($_GET['trip_id']) ? (int) $_GET['trip_id'] : null;
-        $tripId ?: json_error('trip_id is required', 400);
-        get_breakdown($pdo, $userId, $tripId);
-        break;
-    case 'POST':
-        $tripId = isset($_GET['trip_id']) ? (int) $_GET['trip_id'] : null;
-        $tripId ?: json_error('trip_id is required', 400);
-        add_budget_item($pdo, $userId, $tripId);
-        break;
-    case 'DELETE':
-        $id = isset($_GET['id']) ? (int) $_GET['id'] : null;
-        $id ?: json_error('id is required', 400);
-        delete_budget_item($pdo, $userId, $id);
-        break;
-    default:
-        json_error('Method not allowed', 405);
-}
-
-function get_breakdown(PDO $pdo, int $userId, int $tripId): void {
-    if (!user_owns_trip($pdo, $userId, $tripId)) {
-        json_error('Trip not found', 404);
+// Handle GET request to fetch budget vs actual
+if ($method === 'GET') {
+    if (!isset($_GET['trip_id'])) {
+        echo json_encode(['error' => 'Missing trip_id']);
+        http_response_code(400);
+        exit;
     }
 
-    $trip = $pdo->prepare('SELECT start_date, end_date FROM trips WHERE id = ?');
-    $trip->execute([$tripId]);
-    $tripRow = $trip->fetch();
+    $tripId = (int)$_GET['trip_id'];
 
-    $itemsStmt = $pdo->prepare('
-        SELECT category, COALESCE(SUM(amount), 0) AS total
-        FROM budget_items
-        WHERE trip_id = ?
-        GROUP BY category
-    ');
-    $itemsStmt->execute([$tripId]);
-    $byCategory = ['transport' => 0, 'stay' => 0, 'meals' => 0, 'other' => 0];
-    foreach ($itemsStmt->fetchAll() as $row) {
-        $byCategory[$row['category']] = (float) $row['total'];
+    // Verify ownership
+    $stmt = $pdo->prepare("SELECT user_id, start_date, end_date, visibility FROM trips WHERE id = ?");
+    $stmt->execute([$tripId]);
+    $trip = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$trip) {
+        echo json_encode(['error' => 'Trip not found']);
+        http_response_code(404);
+        exit;
     }
 
-    $activityStmt = $pdo->prepare('
-        SELECT COALESCE(SUM(COALESCE(sa.custom_cost, a.cost)), 0) AS total
+    if ($trip['user_id'] !== $userId && $trip['visibility'] !== 'public') {
+        echo json_encode(['error' => 'Unauthorized']);
+        http_response_code(403);
+        exit;
+    }
+
+    // 1. Fetch Budget
+    $stmt = $pdo->prepare("SELECT transport_budget, stay_budget, activities_budget, meals_budget, misc_budget, total_budget FROM trip_budget WHERE trip_id = ?");
+    $stmt->execute([$tripId]);
+    $budget = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$budget) {
+        $budget = [
+            'transport_budget' => 0,
+            'stay_budget' => 0,
+            'activities_budget' => 0,
+            'meals_budget' => 0,
+            'misc_budget' => 0,
+            'total_budget' => 0
+        ];
+    }
+
+    // 2. Fetch Actuals from activities (Activities category) and trip_stops (Stay category)
+    $stmt = $pdo->prepare("
+        SELECT a.category, SUM(COALESCE(sa.custom_cost, a.cost)) as actual_cost
         FROM trip_activities sa
-        JOIN activities a ON a.id = sa.activity_id
-        JOIN trip_stops s ON s.id = sa.trip_stop_id
+        JOIN activities a ON sa.activity_id = a.id
+        JOIN trip_stops s ON sa.trip_stop_id = s.id
         WHERE s.trip_id = ?
-    ');
-    $activityStmt->execute([$tripId]);
-    $byCategory['activities'] = (float) $activityStmt->fetchColumn();
+        GROUP BY a.category
+    ");
+    $stmt->execute([$tripId]);
+    $activityActualsRaw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $total = array_sum($byCategory);
+    $actuals = [
+        'transport' => 0,
+        'stay' => 0,
+        'activities' => 0,
+        'meals' => 0,
+        'misc' => 0
+    ];
 
-    $perDayStmt = $pdo->prepare('
-        SELECT day, SUM(amount) AS total FROM (
-            SELECT sa.scheduled_date AS day, COALESCE(sa.custom_cost, a.cost) AS amount
-            FROM trip_activities sa
-            JOIN activities a ON a.id = sa.activity_id
-            JOIN trip_stops s ON s.id = sa.trip_stop_id
-            WHERE s.trip_id = ?
-            UNION ALL
-            SELECT spent_on AS day, amount
-            FROM budget_items
-            WHERE trip_id = ? AND spent_on IS NOT NULL
-        ) combined
-        GROUP BY day
-        ORDER BY day
-    ');
-    $perDayStmt->execute([$tripId, $tripId]);
-    $perDay = $perDayStmt->fetchAll();
+    foreach ($activityActualsRaw as $row) {
+        $cat = $row['category'];
+        $cost = (float)$row['actual_cost'];
+        if ($cat === 'food') {
+            $actuals['meals'] += $cost;
+        } elseif (in_array($cat, ['sightseeing', 'adventure', 'culture', 'relaxation'])) {
+            $actuals['activities'] += $cost;
+        } else {
+            $actuals['misc'] += $cost; // 'other'
+        }
+    }
 
-    $tripDays = max(1, (strtotime($tripRow['end_date']) - strtotime($tripRow['start_date'])) / 86400 + 1);
-    $averagePerDay = round($total / $tripDays, 2);
+    // Add accommodation cost from trip_stops to stay
+    $stmt = $pdo->prepare("SELECT SUM(budget_for_stop) as total_stay FROM trip_stops WHERE trip_id = ?");
+    $stmt->execute([$tripId]);
+    $stayCost = (float)$stmt->fetchColumn();
+    $actuals['stay'] += $stayCost;
 
-    $overBudgetDays = array_values(array_filter($perDay, fn($d) => (float) $d['total'] > $averagePerDay * 1.25));
-
-    json_success([
-        'by_category' => $byCategory,
-        'total' => round($total, 2),
-        'trip_days' => (int) $tripDays,
-        'average_per_day' => $averagePerDay,
-        'per_day' => $perDay,
-        'over_budget_days' => $overBudgetDays,
+    echo json_encode([
+        'budget' => [
+            'transport' => (float)$budget['transport_budget'],
+            'stay' => (float)$budget['stay_budget'],
+            'activities' => (float)$budget['activities_budget'],
+            'meals' => (float)$budget['meals_budget'],
+            'misc' => (float)$budget['misc_budget'],
+            'total' => (float)$budget['total_budget']
+        ],
+        'actuals' => $actuals
     ]);
+    exit;
 }
 
-function add_budget_item(PDO $pdo, int $userId, int $tripId): void {
-    if (!user_owns_trip($pdo, $userId, $tripId)) {
-        json_error('Trip not found', 404);
+// Handle POST request to save budget
+if ($method === 'POST') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!$data || !isset($data['trip_id'])) {
+        echo json_encode(['error' => 'Invalid data']);
+        http_response_code(400);
+        exit;
     }
 
-    $body = get_request_body();
-    $missing = missing_fields($body, ['category', 'amount']);
-    if ($missing) {
-        json_error('Missing required field(s): ' . implode(', ', $missing));
+    $tripId = (int)$data['trip_id'];
+
+    // Verify ownership
+    $stmt = $pdo->prepare("SELECT user_id FROM trips WHERE id = ?");
+    $stmt->execute([$tripId]);
+    if ($stmt->fetchColumn() !== $userId) {
+        echo json_encode(['error' => 'Unauthorized']);
+        http_response_code(403);
+        exit;
     }
 
-    $category = clean_str($body['category']);
-    if (!in_array($category, ['transport', 'stay', 'meals', 'other'], true)) {
-        json_error('category must be one of: transport, stay, meals, other');
-    }
+    $transport = isset($data['transport']) ? (float)$data['transport'] : 0;
+    $stay = isset($data['stay']) ? (float)$data['stay'] : 0;
+    $activities = isset($data['activities']) ? (float)$data['activities'] : 0;
+    $meals = isset($data['meals']) ? (float)$data['meals'] : 0;
+    $misc = isset($data['misc']) ? (float)$data['misc'] : 0;
 
-    $amount = (float) $body['amount'];
-    if ($amount < 0) {
-        json_error('amount cannot be negative');
-    }
-
-    $stopId = null;
-    if (!empty($body['stop_id'])) {
-        $stopId = (int) $body['stop_id'];
-        if (!user_owns_stop($pdo, $userId, $stopId)) {
-            json_error('Stop not found', 404);
-        }
-    }
-
-    $spentOn = null;
-    if (!empty($body['spent_on'])) {
-        $spentOn = clean_str($body['spent_on']);
-        if (!is_valid_date($spentOn)) {
-            json_error('spent_on must be YYYY-MM-DD');
-        }
-    }
-
-    $stmt = $pdo->prepare('
-        INSERT INTO budget_items (trip_id, stop_id, category, description, amount, spent_on)
+    $stmt = $pdo->prepare("
+        INSERT INTO trip_budget (trip_id, transport_budget, stay_budget, activities_budget, meals_budget, misc_budget)
         VALUES (?, ?, ?, ?, ?, ?)
-        RETURNING id
-    ');
-    $stmt->execute([
-        $tripId,
-        $stopId,
-        $category,
-        isset($body['description']) ? clean_str($body['description']) : null,
-        $amount,
-        $spentOn,
-    ]);
+        ON CONFLICT (trip_id) DO UPDATE SET 
+            transport_budget = EXCLUDED.transport_budget,
+            stay_budget = EXCLUDED.stay_budget,
+            activities_budget = EXCLUDED.activities_budget,
+            meals_budget = EXCLUDED.meals_budget,
+            misc_budget = EXCLUDED.misc_budget,
+            updated_at = CURRENT_TIMESTAMP
+    ");
 
-    json_success(['id' => (int) $stmt->fetchColumn()], 201);
-}
-
-function delete_budget_item(PDO $pdo, int $userId, int $id): void {
-    $stmt = $pdo->prepare('
-        SELECT b.id FROM budget_items b
-        JOIN trips t ON t.id = b.trip_id
-        WHERE b.id = ? AND t.user_id = ?
-    ');
-    $stmt->execute([$id, $userId]);
-    if (!$stmt->fetch()) {
-        json_error('Not found', 404);
+    try {
+        $stmt->execute([$tripId, $transport, $stay, $activities, $meals, $misc]);
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        error_log($e->getMessage());
+        echo json_encode(['error' => 'Database error']);
+        http_response_code(500);
     }
-    $pdo->prepare('DELETE FROM budget_items WHERE id = ?')->execute([$id]);
-    json_success(['deleted' => true]);
+    exit;
 }
+
+echo json_encode(['error' => 'Method not allowed']);
+http_response_code(405);
+exit;

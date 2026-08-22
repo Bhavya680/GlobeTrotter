@@ -89,8 +89,8 @@ try {
             id SERIAL PRIMARY KEY,
             trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
             city_id INT NOT NULL REFERENCES cities(id) ON DELETE RESTRICT,
-            arrival_date DATE NOT NULL,
-            departure_date DATE NOT NULL,
+            arrival_date DATE,
+            departure_date DATE,
             order_index INT NOT NULL DEFAULT 0,
             transport_note TEXT,
             accommodation VARCHAR(255),
@@ -100,6 +100,8 @@ try {
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+        ALTER TABLE trip_stops ALTER COLUMN arrival_date DROP NOT NULL;
+        ALTER TABLE trip_stops ALTER COLUMN departure_date DROP NOT NULL;
     ");
     // If old 'stops' table exists, migrate rows to 'trip_stops' if needed
     $tables = $pdo->query("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")->fetchAll(PDO::FETCH_COLUMN);

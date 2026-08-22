@@ -5,6 +5,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     initCreateTripForm();
     initMyTripsFilters();
+    initRandomAutoFill();
 });
 
 function initCreateTripForm() {
@@ -178,5 +179,94 @@ function initMyTripsFilters() {
                 }
             }
         });
+    });
+}
+
+function initRandomAutoFill() {
+    const btn = document.getElementById('btnAutoFillRandom');
+    if (!btn) return;
+
+    const sampleTrips = [
+        {
+            name: 'European Summer Odyssey 2026',
+            description: 'Exploring historic art, world-class gastronomy, and vibrant coastal culture across Paris, Rome, and Barcelona.',
+            stops: [
+                { city_id: 1, name: 'Paris, France' },
+                { city_id: 2, name: 'Rome, Italy' },
+                { city_id: 3, name: 'Barcelona, Spain' }
+            ]
+        },
+        {
+            name: 'Tokyo & Bali Tropical Escape',
+            description: 'A perfect blend of high-tech metropolis neon lights and serene tropical beaches in Southeast Asia.',
+            stops: [
+                { city_id: 4, name: 'Tokyo, Japan' },
+                { city_id: 5, name: 'Bali, Indonesia' }
+            ]
+        },
+        {
+            name: 'Grand New York & London Highlights',
+            description: 'Experiencing Broadway shows, iconic landmarks, royal parks, and premier dining in top global capitals.',
+            stops: [
+                { city_id: 6, name: 'New York, USA' },
+                { city_id: 7, name: 'London, UK' }
+            ]
+        }
+    ];
+
+    btn.addEventListener('click', function() {
+        const choice = sampleTrips[Math.floor(Math.random() * sampleTrips.length)];
+
+        const nameEl = document.getElementById('trip_name');
+        const descEl = document.getElementById('description');
+        const startEl = document.getElementById('start_date');
+        const endEl = document.getElementById('end_date');
+
+        if (nameEl) {
+            nameEl.value = choice.name;
+            nameEl.dispatchEvent(new Event('input'));
+        }
+        if (descEl) {
+            descEl.value = choice.description;
+            descEl.dispatchEvent(new Event('input'));
+        }
+
+        // Set realistic dates starting 7 days from today for 10 days
+        const today = new Date();
+        const start = new Date(today);
+        start.setDate(start.getDate() + 7);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 10);
+
+        const formatDate = d => d.toISOString().split('T')[0];
+        if (startEl) startEl.value = formatDate(start);
+        if (endEl) endEl.value = formatDate(end);
+
+        // Pre-fill stop inputs if available
+        const stopsContainer = document.getElementById('stopsContainer');
+        if (stopsContainer && choice.stops) {
+            const stopCards = stopsContainer.querySelectorAll('.stop-card');
+            choice.stops.forEach((st, idx) => {
+                let card = stopCards[idx];
+                if (!card) {
+                    const addBtn = document.getElementById('addStopBtn');
+                    if (addBtn) addBtn.click();
+                    const updatedCards = stopsContainer.querySelectorAll('.stop-card');
+                    card = updatedCards[updatedCards.length - 1];
+                }
+                if (card) {
+                    const cityInput = card.querySelector('.city-search-input');
+                    const hiddenInput = card.querySelector('.city-id-input');
+                    if (cityInput && hiddenInput) {
+                        cityInput.value = st.name;
+                        hiddenInput.value = st.city_id;
+                    }
+                }
+            });
+        }
+
+        if (typeof toast === 'function') {
+            toast('Auto-filled details for ' + choice.name, 'success');
+        }
     });
 }

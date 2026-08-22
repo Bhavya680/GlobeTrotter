@@ -94,35 +94,35 @@ GlobeTrotter utilizes a robust, modern MVC and REST API architecture built for s
 ```mermaid
 graph TD
     subgraph Client ["🎨 FRONTEND LAYER (Vanilla ES6 + Bootstrap 5 + React 18 + Chart.js)"]
-        UI[Responsive UI / Glassmorphism Components]
-        State[Session State / Global Toasts]
-        API_Wrapper[Universal api() Wrapper / CSRF Header]
-        React_Module[React 18 Admin Donut Chart]
-        Charts[Chart.js Visualization Engines]
+        UI["Responsive UI / Glassmorphism Components"]
+        State["Session State / Global Toasts"]
+        API_Wrapper["Universal api Client / CSRF Header"]
+        React_Module["React 18 Admin Donut Chart"]
+        Charts["Chart.js Visualization Engines"]
     end
 
     subgraph Server ["🔙 BACKEND LAYER (PHP 8.2+ REST Gateway)"]
-        Router[Page Controllers & Routing Layer]
-        Auth_Mid[Auth & Session Regeneration Middleware]
-        RBAC_Mid[Role-Based Access Control - requireAdmin]
-        CSRF_Mid[CSRF Token Verification - X-CSRF-Token]
+        Router["Page Controllers & Routing Layer"]
+        Auth_Mid["Auth & Session Regeneration Middleware"]
+        RBAC_Mid["Role-Based Access Control - requireAdmin"]
+        CSRF_Mid["CSRF Token Verification - X-CSRF-Token"]
         
         subgraph API_Services ["⚙️ REST JSON API SERVICES"]
-            Trips_API[api/trips.php - CRUD & Clone Engine]
-            Stops_API[api/stops.php - Stop & Activity Management]
-            Budget_API[api/budget.php - Cost Accounting]
-            Cities_API[api/cities.php - Destination Search]
-            Comm_API[api/community.php - Social & Likes]
-            Admin_API[api/admin.php - User Management]
-            Profile_API[api/profile.php - Preferences & Wishlist]
+            Trips_API["api/trips.php - CRUD & Clone Engine"]
+            Stops_API["api/stops.php - Stop & Activity Management"]
+            Budget_API["api/budget.php - Cost Accounting"]
+            Cities_API["api/cities.php - Destination Search"]
+            Comm_API["api/community.php - Social & Likes"]
+            Admin_API["api/admin.php - User Management"]
+            Profile_API["api/profile.php - Preferences & Wishlist"]
         end
     end
 
     subgraph Storage ["💾 DATABASE & STORAGE LAYER"]
-        PDO_Layer[PDO Prepared Statements & Transactions]
-        DB[(PostgreSQL 15 Database)]
-        Cloud_DB[(Shared Cloud DB - Neon / Supabase)]
-        Uploads[Local Uploads / Assets Storage]
+        PDO_Layer["PDO Prepared Statements & Transactions"]
+        DB[("PostgreSQL 15 Database")]
+        Cloud_DB[("Shared Cloud DB - Neon / Supabase")]
+        Uploads["Local Uploads / Assets Storage"]
     end
 
     UI --> API_Wrapper

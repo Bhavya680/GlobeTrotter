@@ -29,8 +29,8 @@ $pageTitle = isset($pageTitle) ? $pageTitle : SITE_NAME;
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <!-- Global CSS -->
     <link rel="stylesheet" href="<?= SITE_URL ?>/assets/css/style.css">
-    <!-- Dashboard CSS (only when on dashboard) -->
-    <?php if (isset($loadDashboardCSS) && $loadDashboardCSS): ?>
+    <!-- Dashboard CSS (contains global navbar styling) -->
+    <?php if (!empty($loadDashboardCSS) || !empty($loadTripsCSS)): ?>
     <link rel="stylesheet" href="<?= SITE_URL ?>/assets/css/dashboard.css">
     <?php endif; ?>
     <!-- Trips CSS (create-trip & my-trips) -->

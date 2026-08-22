@@ -26,8 +26,15 @@ function get_list(PDO $pdo, int $userId): void
 {
     $stmt = $pdo->prepare('
         SELECT
-            t.id, t.trip_name AS name, t.start_date, t.end_date, t.description, t.cover_photo,
-            (t.visibility = 'public') AS is_public, NULL AS share_slug,
+            t.id,
+            COALESCE(t.trip_name, \'\') AS name,
+            t.trip_name,
+            t.start_date, t.end_date, t.description, t.cover_photo, t.visibility, t.share_slug,
+            CASE
+                WHEN t.end_date < CURRENT_DATE THEN \'completed\'
+                WHEN t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE THEN \'ongoing\'
+                ELSE \'upcoming\'
+            END AS status,
             COUNT(DISTINCT s.id) AS stop_count,
             COUNT(DISTINCT s.city_id) AS destination_count
         FROM trips t
@@ -42,7 +49,17 @@ function get_list(PDO $pdo, int $userId): void
 
 function get_one(PDO $pdo, int $userId, int $tripId): void
 {
-    $stmt = $pdo->prepare('SELECT * FROM trips WHERE id = ? AND user_id = ?');
+    $stmt = $pdo->prepare('
+        SELECT t.id, t.user_id, COALESCE(t.trip_name, \'\') AS name, t.trip_name,
+               t.start_date, t.end_date, t.description, t.cover_photo, t.visibility, t.share_slug,
+               CASE
+                   WHEN t.end_date < CURRENT_DATE THEN \'completed\'
+                   WHEN t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE THEN \'ongoing\'
+                   ELSE \'upcoming\'
+               END AS status
+        FROM trips t
+        WHERE t.id = ? AND t.user_id = ?
+    ');
     $stmt->execute([$tripId, $userId]);
     $trip = $stmt->fetch();
 
@@ -52,6 +69,7 @@ function get_one(PDO $pdo, int $userId, int $tripId): void
 
     $stopsStmt = $pdo->prepare('
         SELECT s.id, s.city_id, s.arrival_date AS start_date, s.departure_date AS end_date, s.order_index AS sort_order,
+               s.transport_note, s.accommodation, s.accommodation_cost, s.budget_for_stop, s.notes AS stop_notes,
                c.name AS city_name, c.country AS city_country, c.image_url AS city_image
         FROM trip_stops s
         JOIN cities c ON c.id = s.city_id
@@ -68,15 +86,15 @@ function create_trip(PDO $pdo, int $userId): void
 {
     $body = !empty($_FILES) ? $_POST : get_request_body();
 
-    $missing = missing_fields($body, ['name', 'start_date', 'end_date']);
-    if ($missing) {
-        json_error('Missing required field(s): ' . implode(', ', $missing));
+    $name = clean_str($body['name'] ?? $body['trip_name'] ?? '');
+    if ($name === '') {
+        json_error('Missing required field: name');
     }
 
-    $name = clean_str($body['name']);
-    $startDate = clean_str($body['start_date']);
-    $endDate = clean_str($body['end_date']);
+    $startDate = clean_str($body['start_date'] ?? '');
+    $endDate = clean_str($body['end_date'] ?? '');
     $description = clean_str($body['description'] ?? '');
+    $visibility = in_array($body['visibility'] ?? '', ['public', 'private'], true) ? $body['visibility'] : 'private';
 
     if (!is_valid_date($startDate) || !is_valid_date($endDate)) {
         json_error('Dates must be in YYYY-MM-DD format');
@@ -85,19 +103,31 @@ function create_trip(PDO $pdo, int $userId): void
         json_error('End date cannot be before start date');
     }
 
+    $today = date('Y-m-d');
+    $status = 'upcoming';
+    if ($endDate < $today) {
+        $status = 'completed';
+    } elseif ($startDate <= $today && $endDate >= $today) {
+        $status = 'ongoing';
+    }
+
     $coverPhoto = null;
     try {
-        $coverPhoto = handle_image_upload('cover_photo', 'covers');
+        if (!empty($_FILES['cover_photo']['name'])) {
+            $coverPhoto = handle_image_upload('cover_photo', 'covers');
+        }
     } catch (RuntimeException $e) {
         json_error($e->getMessage());
     }
 
+    $shareSlug = ($visibility === 'public') ? generate_unique_slug($pdo) : null;
+
     $stmt = $pdo->prepare('
-        INSERT INTO trips (user_id, name, start_date, end_date, description, cover_photo)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO trips (user_id, trip_name, start_date, end_date, description, cover_photo, status, visibility, share_slug)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         RETURNING id
     ');
-    $stmt->execute([$userId, $name, $startDate, $endDate, $description, $coverPhoto]);
+    $stmt->execute([$userId, $name, $startDate, $endDate, $description, $coverPhoto, $status, $visibility, $shareSlug]);
     $newId = (int) $stmt->fetchColumn();
 
     get_one($pdo, $userId, $newId);
@@ -113,41 +143,33 @@ function update_trip(PDO $pdo, int $userId, int $tripId): void
     $fields = [];
     $params = [];
 
-    foreach (['name', 'description'] as $key) {
-        if (isset($body[$key])) {
-            $fields[] = "{$key} = ?";
-            $params[] = clean_str($body[$key]);
-        }
+    $name = isset($body['name']) ? clean_str($body['name']) : (isset($body['trip_name']) ? clean_str($body['trip_name']) : null);
+    if ($name !== null) {
+        $fields[] = 'trip_name = ?';
+        $params[] = $name;
+    }
+
+    if (isset($body['description'])) {
+        $fields[] = 'description = ?';
+        $params[] = clean_str($body['description']);
     }
 
     $startDate = isset($body['start_date']) ? clean_str($body['start_date']) : null;
     $endDate = isset($body['end_date']) ? clean_str($body['end_date']) : null;
 
     if ($startDate !== null) {
-        if (!is_valid_date($startDate))
-            json_error('Invalid start_date');
+        if (!is_valid_date($startDate)) json_error('Invalid start_date');
         $fields[] = 'start_date = ?';
         $params[] = $startDate;
     }
     if ($endDate !== null) {
-        if (!is_valid_date($endDate))
-            json_error('Invalid end_date');
+        if (!is_valid_date($endDate)) json_error('Invalid end_date');
         $fields[] = 'end_date = ?';
         $params[] = $endDate;
     }
-    if (($startDate !== null) xor ($endDate !== null)) {
-        $existing = $pdo->prepare('SELECT start_date, end_date FROM trips WHERE id = ?');
-        $existing->execute([$tripId]);
-        $row = $existing->fetch();
-        $effectiveStart = $startDate ?? $row['start_date'];
-        $effectiveEnd = $endDate ?? $row['end_date'];
-        if ($effectiveEnd < $effectiveStart) {
-            json_error('End date cannot be before start date');
-        }
-    }
 
-    if (isset($body['is_public'])) {
-        $isPublic = filter_var($body['is_public'], FILTER_VALIDATE_BOOLEAN);
+    if (isset($body['visibility']) || isset($body['is_public'])) {
+        $isPublic = isset($body['visibility']) ? ($body['visibility'] === 'public') : filter_var($body['is_public'], FILTER_VALIDATE_BOOLEAN);
         $fields[] = 'visibility = ?';
         $params[] = $isPublic ? 'public' : 'private';
 
@@ -162,7 +184,7 @@ function update_trip(PDO $pdo, int $userId, int $tripId): void
     }
 
     try {
-        if (!empty($_FILES['cover_photo'])) {
+        if (!empty($_FILES['cover_photo']['name'])) {
             $coverPhoto = handle_image_upload('cover_photo', 'covers');
             if ($coverPhoto !== null) {
                 $fields[] = 'cover_photo = ?';

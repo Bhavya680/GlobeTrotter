@@ -28,6 +28,19 @@
 
 .gt-navbar .navbar-brand .brand-icon { color: var(--gt-accent); font-size: 1.3rem; }
 
+.gt-navbar .nav-link {
+    color: rgba(255, 255, 255, 0.75) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.85rem;
+}
+
+.gt-navbar .nav-link:hover,
+.gt-navbar .nav-link.active {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+}
+
 /* Navbar search */
 .navbar-search-wrap {
     position: relative;

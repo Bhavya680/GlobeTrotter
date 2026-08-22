@@ -85,24 +85,29 @@ if ($flash):
         <div class="collapse navbar-collapse" id="navbarCollapse">
 
             <!-- Quick Navigation Links -->
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-2 d-none d-xl-flex align-items-center gap-1">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 d-flex align-items-center gap-1">
                 <li class="nav-item">
-                    <a class="nav-link px-2.5 py-1.5 text-secondary fw-semibold small rounded-2" href="<?= SITE_URL ?>/dashboard.php">
+                    <a class="nav-link px-3 py-1.5 text-white-50 fw-semibold small rounded-pill transition" href="<?= SITE_URL ?>/dashboard.php">
                         <i class="fa-solid fa-house me-1 text-primary"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link px-2.5 py-1.5 text-secondary fw-semibold small rounded-2" href="<?= SITE_URL ?>/city-search.php">
+                    <a class="nav-link px-3 py-1.5 text-white-50 fw-semibold small rounded-pill transition" href="<?= SITE_URL ?>/my-trips.php">
+                        <i class="fa-solid fa-suitcase-rolling me-1 text-info"></i> My Trips
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link px-3 py-1.5 text-white-50 fw-semibold small rounded-pill transition" href="<?= SITE_URL ?>/city-search.php">
                         <i class="fa-solid fa-compass me-1 text-success"></i> Explore
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link px-2.5 py-1.5 text-secondary fw-semibold small rounded-2" href="<?= SITE_URL ?>/calendar-view.php">
+                    <a class="nav-link px-3 py-1.5 text-white-50 fw-semibold small rounded-pill transition" href="<?= SITE_URL ?>/calendar-view.php">
                         <i class="fa-regular fa-calendar-days me-1 text-warning"></i> Calendar
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link px-2.5 py-1.5 text-secondary fw-semibold small rounded-2" href="<?= SITE_URL ?>/community.php">
+                    <a class="nav-link px-3 py-1.5 text-white-50 fw-semibold small rounded-pill transition" href="<?= SITE_URL ?>/community.php">
                         <i class="fa-solid fa-comments me-1 text-purple"></i> Community
                     </a>
                 </li>
@@ -115,7 +120,7 @@ if ($flash):
                            class="search-input"
                            id="navSearchInput"
                            name="q"
-                           placeholder="Search trips and cities…"
+                           placeholder="Search trips, cities, places…"
                            autocomplete="off"
                            aria-label="Search trips and cities">
                     <button type="submit" class="search-btn" aria-label="Search">
@@ -126,32 +131,11 @@ if ($flash):
                 <div class="search-autocomplete" id="navAutocomplete" role="listbox" aria-label="Search suggestions"></div>
             </div>
 
-            <!-- Right: Controls + Avatar -->
-            <div class="nav-controls ms-lg-auto mt-2 mt-lg-0">
-
-                <!-- Group By -->
-                <select class="nav-select" id="navGroupBy" aria-label="Group By" title="Group By">
-                    <option value="">Group By</option>
-                    <option value="region">By Region</option>
-                    <option value="date">By Date</option>
-                    <option value="status">By Status</option>
-                </select>
-
-                <!-- Filter -->
-                <button class="nav-filter-btn" id="navFilterBtn"
-                        data-bs-toggle="modal" data-bs-target="#filterModal"
-                        aria-label="Filter trips">
-                    <i class="fa-solid fa-sliders"></i>
-                    Filter
-                </button>
-
-                <!-- Sort By -->
-                <select class="nav-select" id="navSortBy" aria-label="Sort By" title="Sort By">
-                    <option value="newest">Sort: Newest</option>
-                    <option value="oldest">Oldest</option>
-                    <option value="az">A–Z</option>
-                    <option value="budget">Budget ↑</option>
-                </select>
+            <!-- Right: Action CTA + Avatar -->
+            <div class="nav-controls ms-lg-auto mt-2 mt-lg-0 d-flex align-items-center gap-2">
+                <a href="<?= SITE_URL ?>/create-trip.php" class="btn btn-sm btn-primary rounded-pill px-3 py-1.5 fw-semibold d-none d-md-inline-flex align-items-center shadow-sm">
+                    <i class="fa-solid fa-plus me-1.5"></i> Plan Trip
+                </a>
 
                 <!-- User Avatar + Dropdown -->
                 <div class="nav-user-wrap ms-1">

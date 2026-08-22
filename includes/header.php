@@ -33,6 +33,10 @@ $pageTitle = isset($pageTitle) ? $pageTitle : SITE_NAME;
     <?php if (isset($loadDashboardCSS) && $loadDashboardCSS): ?>
     <link rel="stylesheet" href="<?= SITE_URL ?>/assets/css/dashboard.css">
     <?php endif; ?>
+    <!-- Trips CSS (create-trip & my-trips) -->
+    <?php if (isset($loadTripsCSS) && $loadTripsCSS): ?>
+    <link rel="stylesheet" href="<?= SITE_URL ?>/assets/css/trips.css">
+    <?php endif; ?>
 </head>
 <body>
 

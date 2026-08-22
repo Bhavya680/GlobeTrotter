@@ -17,6 +17,8 @@ switch ($method) {
     case 'POST':
         if ($action === 'toggle_saved') {
             toggle_saved_destination($pdo, $userId);
+        } elseif ($action === 'change_password') {
+            handle_change_password($pdo, $userId);
         } else {
             handle_update($pdo, $userId);
         }
@@ -30,7 +32,7 @@ switch ($method) {
 
 function handle_get(PDO $pdo, int $userId): void {
     $stmt = $pdo->prepare('
-        SELECT id, first_name, last_name, email, phone, city, country, profile_photo, additional_info, language_pref, role, created_at
+        SELECT id, first_name, last_name, email, phone, city, country, profile_photo, additional_info, language_pref, preferences, role, created_at
         FROM users WHERE id = ?
     ');
     $stmt->execute([$userId]);
@@ -66,6 +68,11 @@ function handle_update(PDO $pdo, int $userId): void {
         }
     }
 
+    if (isset($body['preferences'])) {
+        $fields[] = 'preferences = ?';
+        $params[] = is_string($body['preferences']) ? $body['preferences'] : json_encode($body['preferences']);
+    }
+
     if (isset($body['email']) && trim($body['email']) !== '') {
         $newEmail = strtolower(clean_str($body['email']));
         if (!is_valid_email($newEmail)) {
@@ -80,24 +87,20 @@ function handle_update(PDO $pdo, int $userId): void {
         $params[] = $newEmail;
     }
 
-    if (isset($body['new_password']) && $body['new_password'] !== '') {
-        if (strlen($body['new_password']) < 8) {
-            json_error('New password must be at least 8 characters');
-        }
-        $current = $pdo->prepare('SELECT password_hash FROM users WHERE id = ?');
-        $current->execute([$userId]);
-        $row = $current->fetch();
-        if (!$row || !password_verify((string) ($body['current_password'] ?? ''), $row['password_hash'])) {
-            json_error('Current password is incorrect', 403);
-        }
-        $fields[] = 'password_hash = ?';
-        $params[] = password_hash($body['new_password'], PASSWORD_DEFAULT);
-    }
-
     try {
         if (!empty($_FILES['profile_photo']['name'])) {
             $photoUrl = handle_image_upload('profile_photo', 'profiles');
             if ($photoUrl !== null) {
+                $oldStmt = $pdo->prepare("SELECT profile_photo FROM users WHERE id = ?");
+                $oldStmt->execute([$userId]);
+                $oldPhoto = $oldStmt->fetchColumn();
+                if ($oldPhoto && !str_starts_with($oldPhoto, 'http')) {
+                    $oldPath = __DIR__ . '/../assets/uploads/profiles/' . basename($oldPhoto);
+                    if (file_exists($oldPath)) {
+                        @unlink($oldPath);
+                    }
+                }
+
                 $fields[] = 'profile_photo = ?';
                 $params[] = $photoUrl;
             }
@@ -116,6 +119,33 @@ function handle_update(PDO $pdo, int $userId): void {
     $stmt->execute($params);
 
     handle_get($pdo, $userId);
+}
+
+function handle_change_password(PDO $pdo, int $userId): void {
+    $body = get_request_body();
+    
+    $current = $body['current_password'] ?? '';
+    $new = $body['new_password'] ?? '';
+    $confirm = $body['confirm_password'] ?? '';
+    
+    if (strlen($new) < 8) {
+        json_error('New password must be at least 8 characters');
+    }
+    if ($new !== $confirm) {
+        json_error('New passwords do not match');
+    }
+    
+    $stmt = $pdo->prepare('SELECT password_hash FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch();
+    if (!$row || !password_verify((string)$current, $row['password_hash'])) {
+        json_error('Current password is incorrect', 403);
+    }
+    
+    $updateStmt = $pdo->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+    $updateStmt->execute([password_hash($new, PASSWORD_DEFAULT), $userId]);
+    
+    json_success(['message' => 'Password changed successfully']);
 }
 
 function get_saved_destinations(PDO $pdo, int $userId): void {
@@ -149,8 +179,19 @@ function toggle_saved_destination(PDO $pdo, int $userId): void {
 }
 
 function handle_delete(PDO $pdo, int $userId): void {
-    $stmt = $pdo->prepare('DELETE FROM users WHERE id = ?');
+    $body = get_request_body();
+    $email = clean_str($body['email'] ?? '');
+    
+    $stmt = $pdo->prepare('SELECT email FROM users WHERE id = ?');
     $stmt->execute([$userId]);
+    $userEmail = $stmt->fetchColumn();
+    
+    if (strtolower($email) !== strtolower((string)$userEmail)) {
+        json_error('Email confirmation does not match');
+    }
+    
+    $delStmt = $pdo->prepare('DELETE FROM users WHERE id = ?');
+    $delStmt->execute([$userId]);
     logout_user();
     json_success(['deleted' => true]);
 }

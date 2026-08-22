@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
     profile_photo   VARCHAR(255),
     additional_info TEXT,
     language_pref   VARCHAR(10) NOT NULL DEFAULT 'en',
+    preferences     JSON DEFAULT '{}',
     role            VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()

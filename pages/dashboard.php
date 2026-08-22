@@ -82,12 +82,12 @@ $countriesStmt->execute([$userId]);
 $countriesVisited = (int) $countriesStmt->fetchColumn();
 
 $regions = [
-    ['key' => 'Europe', 'label' => 'Europe', 'class' => 'bg-europe'],
-    ['key' => 'Asia', 'label' => 'Asia', 'class' => 'bg-asia'],
-    ['key' => 'North America', 'label' => 'North America', 'class' => 'bg-na'],
-    ['key' => 'South America', 'label' => 'South America', 'class' => 'bg-sa'],
-    ['key' => 'Africa', 'label' => 'Africa', 'class' => 'bg-africa'],
-    ['key' => 'Oceania', 'label' => 'Oceania', 'class' => 'bg-oceania'],
+    ['key' => 'Europe', 'label' => 'Europe', 'class' => 'region-europe'],
+    ['key' => 'Asia', 'label' => 'Asia', 'class' => 'region-asia'],
+    ['key' => 'North America', 'label' => 'North America', 'class' => 'region-na'],
+    ['key' => 'South America', 'label' => 'South America', 'class' => 'region-sa'],
+    ['key' => 'Africa', 'label' => 'Africa', 'class' => 'region-africa'],
+    ['key' => 'Oceania', 'label' => 'Oceania', 'class' => 'region-oceania'],
 ];
 $regionCounts = [];
 

@@ -1,9 +1,9 @@
 <?php
 http_response_code(404);
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../../includes/auth.php';
 
 $pageTitle = '404 - Page Not Found | GlobeTrotter';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="container py-5 text-center" style="max-width: 720px; min-height: 60vh; display: flex; align-items: center; justify-content: center;">
@@ -44,4 +44,4 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

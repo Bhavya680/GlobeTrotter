@@ -3,7 +3,7 @@
 
 $pageTitle    = 'My Trips — GlobeTrotter';
 $loadTripsCSS = true;
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../../includes/auth.php';
 
 $userId = require_login_page();
 $user = current_user();
@@ -59,7 +59,7 @@ $totalCountries = (int)$countriesQ->fetchColumn();
 // ── Gradient classes ───────────────────────────────────────────────────────
 $thumbGrads = ['thumb-g1','thumb-g2','thumb-g3','thumb-g4'];
 
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/../../includes/header.php';
 
 // Helper: render a trip horizontal card
 function renderTripCard(array $t, int $idx, array $thumbGrads, string $siteUrl): void {
@@ -502,4 +502,4 @@ HTML;
 
 </script>
 <script src="<?= SITE_URL ?>/assets/js/trips.js"></script>
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

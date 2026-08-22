@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../../includes/auth.php';
 
 $errorCode = isset($_GET['code']) ? (int) $_GET['code'] : 500;
 $errorMessage = isset($_GET['message']) ? clean_str($_GET['message']) : 'An unexpected error occurred while processing your travel request.';
@@ -9,7 +9,7 @@ if ($errorCode >= 400 && $errorCode < 600) {
 }
 
 $pageTitle = "Error $errorCode — GlobeTrotter";
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="container py-5 text-center" style="max-width: 720px; min-height: 60vh; display: flex; align-items: center; justify-content: center;">
@@ -36,4 +36,4 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

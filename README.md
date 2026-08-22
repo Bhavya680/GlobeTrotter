@@ -237,26 +237,46 @@ Want you and your friend/collaborators to see edits, new trips, and community po
 ```
 GlobeTrotter/
 │
-├── 🌐 index.php                        # Root entry router (redirects to dashboard or login)
-├── 🔐 login.php, register.php, logout.php # Authentication & registration controllers
-├── 📊 dashboard.php                    # User dashboard & overview metrics
-├── ✈️ create-trip.php, my-trips.php    # Trip creation & user journey management
-├── 🛠️ itinerary-builder.php            # Interactive day-by-day itinerary builder
-├── 🗺️ itinerary-view.php               # Detailed structured summary of itinerary
-├── 💰 budget-view.php                  # Financial tracker with category expense ledger
-├── 🔍 city-search.php, activity-search.php # Global city & activity explorer
-├── 📅 calendar-view.php                # Visual interactive trip timeline calendar
-├── 💬 community.php                    # Social feed & traveler community posts
-├── 👤 profile.php                      # User settings, preferences, and saved destinations
-├── 🌐 public-itinerary.php             # Sharable public trip view with 1-click clone engine
-├── 🚫 404.php, error.php               # Custom branded error & recovery pages
+├── 🌐 index.php                        # Universal Front Controller & Application Router
+├── 🚦 router.php                       # PHP built-in web server routing handler
 ├── ⚙️ config.php                       # Application configuration & auto .env loader
 ├── 🔐 .env.example                     # Environment template (local & cloud database URL)
-├── 🗄️ database.sql                     # Core PostgreSQL schema definition
-├── 🗄️ database_full.sql                # Complete standalone dump (Schema + 100% Seed Data)
+├── 🐳 Dockerfile, docker-compose.yml   # Multi-container orchestration (PHP 8.2 + PostgreSQL 15)
+├── 📄 README.md, .htaccess, .gitignore # Documentation, server configs, and git exclusions
+│
+├── 📁 pages/                           # Modular User-Facing Application Views
+│   ├── 📊 dashboard.php                # Travel command center & active journey overview
+│   │
+│   ├── 🔐 auth/                        # User Authentication Subsystem
+│   │   ├── login.php                   # Authentication screen with session regeneration
+│   │   ├── register.php                # New traveler onboarding & preferences setup
+│   │   └── logout.php                  # Secure session purge & cookie destruction
+│   │
+│   ├── ✈️ trips/                       # Trip Planning & Itinerary Management
+│   │   ├── create-trip.php             # New journey generator & cover photo uploader
+│   │   ├── my-trips.php                # Categorized trip hub (Upcoming, Ongoing, Completed)
+│   │   ├── itinerary-builder.php       # Drag-and-drop stop & activity scheduler
+│   │   ├── itinerary-view.php          # Day-by-day structured chronological timeline
+│   │   ├── budget-view.php             # Category spending breakdown & expense ledger
+│   │   ├── calendar-view.php           # Visual interactive multi-trip calendar
+│   │   └── public-itinerary.php        # Shareable showcase with 1-click clone engine
+│   │
+│   ├── 🔍 discovery/                   # Global Destination & Activity Exploration
+│   │   ├── city-search.php             # 22+ indexed destinations with multi-tier filters
+│   │   └── activity-search.php         # 47+ categorized activities with price & duration sorts
+│   │
+│   ├── 💬 community/                   # Social Hub & Travel Experiences
+│   │   └── community.php               # Traveler stories feed, likes, and trip attachments
+│   │
+│   ├── 👤 account/                     # Traveler Settings & Customization
+│   │   └── profile.php                 # Avatar uploads, currency settings, and wishlist
+│   │
+│   └── 🚫 errors/                      # Branded Exception & Recovery Views
+│       ├── 404.php                     # Smart not-found page with search form
+│       └── error.php                   # Generic exception & service failure view
 │
 ├── 🛡️ admin/                           # Administrative Module
-│   └── 📊 index.php                    # Admin analytics, user manager, and rank charts
+│   └── 📊 index.php                    # Admin analytics, user manager, and ranking charts
 │
 ├── ⚙️ api/                             # RESTful JSON API Endpoints
 │   ├── ✈️ trips.php                     # Trip CRUD, status calculation, and copy engine
@@ -294,8 +314,19 @@ GlobeTrotter/
 │   │
 │   └── 🖼️ uploads/                     # User-generated media storage (profiles, covers)
 │
-└── 🧪 scratch/                         # Database Migration & Seeding Utilities
-    └── 🌱 seed_database.php            # Comprehensive multi-table database seeder
+├── 🗄️ database/                        # Database Schemas, Dumps & Migrations
+│   ├── 📋 schema.sql                   # Core PostgreSQL table schemas & constraints
+│   ├── 💾 seed_full.sql                # Complete standalone dump (Schema + 100% Seed Data)
+│   ├── 🌱 seeder.php                   # Comprehensive multi-table CLI database seeder
+│   └── 🔄 migrations/                  # Schema update scripts & historical migrations
+│
+├── 📂 docs/                            # Unified Technical Guides & Specifications
+│   ├── 📄 PRD.md                       # Product Requirements Document
+│   ├── 📄 Architecture.md              # Technical architecture & design patterns
+│   └── 📄 Design.md                    # UX/UI wireframe & design system guide
+│
+└── 🧪 tests/                           # Testing & Verification Utilities
+    └── 🐍 streamlit_tester.py          # Automated UI & API verification suite
 ```
 
 ---

@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../../includes/auth.php';
 
 $userId = require_login_page();
 $tripId = isset($_GET['trip_id']) ? (int)$_GET['trip_id'] : 0;
@@ -52,7 +52,7 @@ $avgPerDay = round($grandTotal / $daysCount, 2);
 
 $extraHead = '<script>const TRIP_ID = ' . $trip['id'] . ';</script><script src="' . SITE_URL . '/assets/js/budget.js" defer></script>';
 $pageTitle = 'Budget Breakdown — ' . htmlspecialchars($trip['name']) . ' — GlobeTrotter';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="container py-4">
@@ -211,4 +211,4 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

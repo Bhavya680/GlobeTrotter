@@ -22,6 +22,7 @@ foreach ($envFiles as $envFile) {
     }
 }
 
+define('ROOT_PATH', __DIR__);
 define('DATABASE_URL', getenv('DATABASE_URL') ?: (getenv('DB_URL') ?: ''));
 define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1');
 define('DB_PORT', getenv('DB_PORT') ?: '5432');

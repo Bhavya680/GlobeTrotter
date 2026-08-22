@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../../includes/auth.php';
 
 $userId = require_login_page();
 
@@ -30,7 +30,7 @@ $actStmt->execute([$userId]);
 $activities = $actStmt->fetchAll();
 
 $pageTitle = 'Trip Calendar — GlobeTrotter';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <script>
@@ -750,4 +750,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

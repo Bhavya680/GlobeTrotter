@@ -1,6 +1,6 @@
 <?php
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../../includes/auth.php';
 
 $userId = require_login_page('/login.php');
 
@@ -243,7 +243,7 @@ function renderStopCard(array $stop, int $index, array $trip): string {
 }
 
 // ── Include header (outputs <html><head>...<body>) ────────────────────────────
-include __DIR__ . '/includes/header.php';
+include __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="ib-page-body">
@@ -1263,4 +1263,4 @@ function debounce(fn, delay) {
 </script>
 <script src="<?= SITE_URL ?>/assets/js/itinerary.js"></script>
 
-<?php include __DIR__ . '/includes/footer.php'; ?>
+<?php include __DIR__ . '/../../includes/footer.php'; ?>

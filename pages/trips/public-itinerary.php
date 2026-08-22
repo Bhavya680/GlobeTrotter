@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../../includes/auth.php';
 
 $tripId = isset($_GET['trip_id']) ? (int) $_GET['trip_id'] : (isset($_GET['id']) ? (int) $_GET['id'] : 0);
 $slug = clean_str($_GET['slug'] ?? '');
@@ -38,7 +38,7 @@ $isOwner = $trip && $currentUserId && ((int)$trip['user_id'] === $currentUserId)
 $isPublic = $trip && ($trip['visibility'] === 'public');
 
 $pageTitle = $trip ? htmlspecialchars($trip['trip_name']) . ' — Shared Itinerary | GlobeTrotter' : 'Trip Not Found — GlobeTrotter';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="container py-4" style="max-width: 1140px;">
@@ -390,4 +390,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

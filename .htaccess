@@ -1,6 +1,6 @@
 # GlobeTrotter Apache Configuration
 
-DirectoryIndex index.php dashboard.php login.php
+DirectoryIndex index.php
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
@@ -16,8 +16,8 @@ DirectoryIndex index.php dashboard.php login.php
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # Route public share URL alias: /share/slug => /public-itinerary.php?slug=slug
-    RewriteRule ^share/([a-zA-Z0-9_-]+)$ public-itinerary.php?slug=$1 [QSA,L]
+    # Route everything else to index.php front controller
+    RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>
 
 # Protect sensitive files & dotfiles
@@ -26,14 +26,14 @@ DirectoryIndex index.php dashboard.php login.php
     Deny from all
 </FilesMatch>
 
-<FilesMatch "(config\.php|database\.sql|Dockerfile|docker-compose\.yml)$">
+<FilesMatch "(config\.php|Dockerfile|docker-compose\.yml|\.env|\.sql)$">
     Order allow,deny
     Deny from all
 </FilesMatch>
 
 # Custom Error Pages
-ErrorDocument 404 /404.php
-ErrorDocument 500 /error.php
+ErrorDocument 404 /pages/errors/404.php
+ErrorDocument 500 /pages/errors/error.php
 
 # Enable Options
 Options -Indexes +FollowSymLinks

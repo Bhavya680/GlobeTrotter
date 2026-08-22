@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../../includes/auth.php';
 
 $userId = require_login_page();
 
@@ -62,7 +62,7 @@ $stats['activities'] = (int)$actStmt->fetchColumn();
 
 $userPhoto = !empty($user['profile_photo']) ? SITE_URL . '/assets/uploads/profiles/' . htmlspecialchars($user['profile_photo']) : null;
 $pageTitle = 'User Profile & Settings — GlobeTrotter';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <style>
@@ -638,4 +638,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

@@ -45,12 +45,6 @@ $recommendedCities = $recommendedStmt->fetchAll();
 $budgetStmt = $pdo->prepare('
     SELECT
         (
-            SELECT COALESCE(SUM(bi.amount), 0)
-            FROM budget_items bi
-            JOIN trips t1 ON t1.id = bi.trip_id
-            WHERE t1.user_id = ?
-        ) AS items_total,
-        (
             SELECT COALESCE(SUM(b.transport_budget + b.stay_budget + b.activities_budget + b.meals_budget + b.misc_budget), 0)
             FROM trip_budget b
             JOIN trips t2 ON t2.id = b.trip_id
@@ -65,10 +59,10 @@ $budgetStmt = $pdo->prepare('
             WHERE t3.user_id = ?
         ) AS activities_total
 ');
-$budgetStmt->execute([$userId, $userId, $userId]);
+$budgetStmt->execute([$userId, $userId]);
 $budgetRow = $budgetStmt->fetch();
 $budgetHighlights = [
-    'total_planned' => round((float) $budgetRow['items_total'] + (float) $budgetRow['manual_total'] + (float) $budgetRow['activities_total'], 2),
+    'total_planned' => round((float) $budgetRow['manual_total'] + (float) $budgetRow['activities_total'], 2),
     'trip_count' => (int) $pdo->query('SELECT COUNT(*) FROM trips WHERE user_id = ' . (int) $userId)->fetchColumn(),
 ];
 

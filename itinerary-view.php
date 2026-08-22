@@ -114,10 +114,9 @@ $coverPhoto = $trip['cover_photo'] ? "uploads/covers/" . htmlspecialchars($trip[
     <!-- Tailwind CSS (CDN for UI) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- React & Recharts -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
+    <!-- Chart.js -->
+    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- Chart.js -->
@@ -305,17 +304,21 @@ $coverPhoto = $trip['cover_photo'] ? "uploads/covers/" . htmlspecialchars($trip[
                 </div>
                 <?php endif; ?>
                 
-                <div class="<?= !$isOwner ? 'col-span-2 flex flex-col md:flex-row gap-8' : '' ?>">
-                    <!-- React Donut Chart -->
-                    <div class="flex-1">
+                <div class="<?= !$isOwner ? 'lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8' : 'flex flex-col gap-8' ?>">
+                    <!-- Donut Chart placeholder for non-owners if needed -->
+                    <div class="<?= $isOwner ? 'hidden' : '' ?>">
                         <h4 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 text-center">Budget Allocation</h4>
-                        <div id="budget-donut-root"></div>
+                        <div class="mb-8 flex justify-center w-full relative" style="height: 288px;">
+                            <canvas id="budgetDonutChart"></canvas>
+                        </div>
                     </div>
                     
                     <!-- Chart.js Bar Chart -->
-                    <div class="flex-1 mt-8 lg:mt-0">
+                    <div>
                         <h4 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 text-center">Budget vs Actual</h4>
-                        <canvas id="barChart" height="200"></canvas>
+                        <div class="relative h-72 w-full">
+                            <canvas id="barChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -429,7 +432,9 @@ $coverPhoto = $trip['cover_photo'] ? "uploads/covers/" . htmlspecialchars($trip[
         });
     }
 
+    // Initialize charts
     let barChartInstance = null;
+    let donutChartInstance = null;
 
     async function fetchBudgetData() {
         try {
@@ -442,11 +447,8 @@ $coverPhoto = $trip['cover_photo'] ? "uploads/covers/" . htmlspecialchars($trip[
             }
 
             const { budget, actuals } = data;
-            
-            // Set global data for React
-            window.BUDGET_DATA = data;
-            // Dispatch event to force React to re-render if it was already mounted
-            window.dispatchEvent(new Event('budgetDataLoaded'));
+            renderBarChart(budget, actuals);
+            renderDonutChart(budget, actuals);
 
             // Update sidebar
             const totalActual = actuals.transport + actuals.stay + actuals.activities + actuals.meals + actuals.misc;
@@ -480,8 +482,8 @@ $coverPhoto = $trip['cover_photo'] ? "uploads/covers/" . htmlspecialchars($trip[
         const ctx = document.getElementById('barChart').getContext('2d');
         
         const labels = ['Transport', 'Stay', 'Activities', 'Meals', 'Misc'];
-        const bData = [budget.transport, budget.stay, budget.activities, budget.meals, budget.misc];
-        const aData = [actuals.transport, actuals.stay, actuals.activities, actuals.meals, actuals.misc];
+        const bData = [Number(budget.transport), Number(budget.stay), Number(budget.activities), Number(budget.meals), Number(budget.misc)];
+        const aData = [Number(actuals.transport), Number(actuals.stay), Number(actuals.activities), Number(actuals.meals), Number(actuals.misc)];
         
         const actualColors = aData.map((val, i) => val > bData[i] && bData[i] > 0 ? '#ef4444' : '#f97316'); // red if over, orange normally
 
@@ -519,6 +521,56 @@ $coverPhoto = $trip['cover_photo'] ? "uploads/covers/" . htmlspecialchars($trip[
         });
     }
 
+    function renderDonutChart(budget, actuals) {
+        const ctx = document.getElementById('budgetDonutChart');
+        if (!ctx) return;
+        
+        const bData = [
+            Number(budget.transport),
+            Number(budget.stay),
+            Number(budget.activities),
+            Number(budget.meals),
+            Number(budget.misc)
+        ];
+        
+        if (donutChartInstance) donutChartInstance.destroy();
+        
+        const total = bData.reduce((a, b) => a + b, 0);
+        
+        donutChartInstance = new Chart(ctx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Transport', 'Accommodation', 'Activities', 'Meals', 'Miscellaneous'],
+                datasets: [{
+                    data: bData,
+                    backgroundColor: ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'],
+                    borderWidth: 0,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { usePointStyle: true, boxWidth: 8, padding: 20 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const val = context.parsed;
+                                const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                                return ` $${val.toFixed(2)} (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     function renderAlerts(budget, actuals) {
         const container = document.getElementById('alertsContainer');
         container.innerHTML = '';
@@ -539,8 +591,7 @@ $coverPhoto = $trip['cover_photo'] ? "uploads/covers/" . htmlspecialchars($trip[
     fetchBudgetData();
 </script>
 
-<!-- Load React Component -->
-<script type="text/babel" src="assets/js/budget-chart.js"></script>
+
 
 </body>
 </html>

@@ -1,5 +1,5 @@
 const { useState, useEffect } = React;
-const { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } = Recharts;
+const { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } = window.Recharts || Recharts;
 
 const COLORS = {
   transport: '#3b82f6', // blue-500
@@ -125,5 +125,10 @@ const BudgetDonutChart = () => {
   );
 };
 
-const root = ReactDOM.createRoot(document.getElementById('budget-donut-root'));
-root.render(<BudgetDonutChart />);
+try {
+  const root = ReactDOM.createRoot(document.getElementById('budget-donut-root'));
+  root.render(<BudgetDonutChart />);
+} catch (e) {
+  console.error("Error rendering React Donut Chart:", e);
+  document.getElementById('budget-donut-root').innerHTML = '<p class="text-red-500 text-center">Failed to load chart.</p>';
+}

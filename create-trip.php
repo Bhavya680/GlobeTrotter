@@ -153,15 +153,24 @@ require_once __DIR__ . '/includes/header.php';
                 <li class="breadcrumb-item active"><?= $editMode ? 'Edit Trip' : 'New Trip' ?></li>
             </ol>
         </nav>
-        <h1>
-            <i class="fa-solid fa-<?= $editMode ? 'pen-to-square' : 'route' ?> me-2"></i>
-            <?= $editMode ? 'Edit Your Trip' : 'Plan a New Trip' ?>
-        </h1>
-        <p class="page-subtitle">
-            <?= $editMode
-                ? 'Update your trip details and stops below.'
-                : "Fill in the details, add stops, and pick activities — we'll help you build the perfect itinerary." ?>
-        </p>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h1>
+                    <i class="fa-solid fa-<?= $editMode ? 'pen-to-square' : 'route' ?> me-2"></i>
+                    <?= $editMode ? 'Edit Your Trip' : 'Plan a New Trip' ?>
+                </h1>
+                <p class="page-subtitle mb-0">
+                    <?= $editMode
+                        ? 'Update your trip details and stops below.'
+                        : "Fill in the details, add stops, and pick activities — we'll help you build the perfect itinerary." ?>
+                </p>
+            </div>
+            <?php if (!$editMode): ?>
+            <button type="button" class="btn btn-light btn-sm fw-semibold shadow-sm text-primary" id="btnAutoFillRandom">
+                <i class="fa-solid fa-dice text-warning me-1"></i> Auto-Fill Random Details
+            </button>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
 

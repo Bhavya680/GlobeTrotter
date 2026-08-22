@@ -30,9 +30,7 @@ $pageTitle = isset($pageTitle) ? $pageTitle : SITE_NAME;
     <!-- Global CSS -->
     <link rel="stylesheet" href="<?= SITE_URL ?>/assets/css/style.css">
     <!-- Dashboard CSS (contains global navbar styling) -->
-    <?php if (!empty($loadDashboardCSS) || !empty($loadTripsCSS)): ?>
     <link rel="stylesheet" href="<?= SITE_URL ?>/assets/css/dashboard.css">
-    <?php endif; ?>
     <!-- Trips CSS (create-trip & my-trips) -->
     <?php if (isset($loadTripsCSS) && $loadTripsCSS): ?>
     <link rel="stylesheet" href="<?= SITE_URL ?>/assets/css/trips.css">

@@ -136,33 +136,34 @@ HTML;
                id="viewBtn{$t['id']}">
                 <i class="fa-solid fa-eye"></i> View
             </a>
-            <a href="create-trip.php?trip_id={$t['id']}"
+            <a href="itinerary-builder.php?trip_id={$t['id']}"
                class="btn-trip-action btn-trip-edit"
                id="editBtn{$t['id']}">
-                <i class="fa-solid fa-pen"></i> Edit
+                <i class="fa-solid fa-pen"></i> Builder
             </a>
 HTML;
+    $shareTitle = $t['visibility'] !== 'public' ? 'title="Make trip public to share"' : '';
     if ($status === 'completed') {
         echo <<<HTML
             <button type="button" class="btn-trip-action btn-trip-share"
                     id="shareBtn{$t['id']}"
                     onclick="openShare({$t['id']}, '{$initial}')"
-                    <?= $t['visibility'] !== 'public' ? 'title="Make trip public to share"' : '' ?>>
+                    {$shareTitle}>
                 <i class="fa-solid fa-share-nodes"></i> Share
             </button>
 HTML;
     }
+    $escapedName = htmlspecialchars($t['trip_name'], ENT_QUOTES);
     if ($status !== 'ongoing') {
         echo <<<HTML
             <button type="button" class="btn-trip-action btn-trip-delete"
                     id="deleteBtn{$t['id']}"
-                    onclick="confirmDelete({$t['id']}, '" . htmlspecialchars($t['trip_name'], ENT_QUOTES) . "')">
+                    onclick="confirmDelete({$t['id']}, '{$escapedName}')">
                 <i class="fa-solid fa-trash"></i> Delete
             </button>
 HTML;
     }
-    echo "</div></div>
-";
+    echo "</div></div>\n";
 }
 ?>
 

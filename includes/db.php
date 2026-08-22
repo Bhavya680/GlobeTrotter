@@ -2,9 +2,31 @@
 require_once __DIR__ . '/../config.php';
 
 try {
-    $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s', DB_HOST, DB_PORT, DB_NAME);
+    if (!empty(DATABASE_URL)) {
+        // Parse complete cloud connection URL: postgresql://user:password@host:port/dbname?sslmode=require
+        $dbParts = parse_url(DATABASE_URL);
+        $dbHost = $dbParts['host'] ?? '127.0.0.1';
+        $dbPort = $dbParts['port'] ?? 5432;
+        $dbUser = isset($dbParts['user']) ? urldecode($dbParts['user']) : 'postgres';
+        $dbPass = isset($dbParts['pass']) ? urldecode($dbParts['pass']) : '';
+        $dbName = isset($dbParts['path']) ? ltrim($dbParts['path'], '/') : 'globetrotter';
 
-    $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+        $sslMode = 'prefer';
+        if (isset($dbParts['query'])) {
+            parse_str($dbParts['query'], $queryParams);
+            if (!empty($queryParams['sslmode'])) {
+                $sslMode = $queryParams['sslmode'];
+            }
+        }
+        $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s;sslmode=%s', $dbHost, $dbPort, $dbName, $sslMode);
+    } else {
+        $sslMode = defined('DB_SSLMODE') ? DB_SSLMODE : 'prefer';
+        $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s;sslmode=%s', DB_HOST, DB_PORT, DB_NAME, $sslMode);
+        $dbUser = DB_USER;
+        $dbPass = DB_PASS;
+    }
+
+    $pdo = new PDO($dsn, $dbUser, $dbPass, [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES   => false,

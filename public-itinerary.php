@@ -234,21 +234,21 @@ require_once __DIR__ . '/includes/header.php';
 
                         <div class="card-body p-4">
                             <!-- Stop Details (Accommodation, Transport, Notes) -->
-                            <?php if ($stop['accommodation'] || $stop['transport_type'] || $stop['notes']): ?>
+                            <?php if (!empty($stop['accommodation']) || !empty($stop['transport_type']) || !empty($stop['notes'])): ?>
                                 <div class="row g-3 mb-3 p-3 bg-light rounded-3">
-                                    <?php if ($stop['accommodation']): ?>
+                                    <?php if (!empty($stop['accommodation'])): ?>
                                         <div class="col-md-4">
                                             <div class="small text-muted text-uppercase fw-bold"><i class="fa-solid fa-hotel me-1 text-primary"></i> Stay</div>
                                             <div class="fw-medium text-dark mt-0.5"><?= htmlspecialchars($stop['accommodation']) ?></div>
                                         </div>
                                     <?php endif; ?>
-                                    <?php if ($stop['transport_type']): ?>
+                                    <?php if (!empty($stop['transport_type'])): ?>
                                         <div class="col-md-4">
                                             <div class="small text-muted text-uppercase fw-bold"><i class="fa-solid fa-plane-departure me-1 text-success"></i> Transport</div>
-                                            <div class="fw-medium text-dark mt-0.5"><?= htmlspecialchars(ucfirst($stop['transport_type'])) ?> <?= $stop['transport_note'] ? '— ' . htmlspecialchars($stop['transport_note']) : '' ?></div>
+                                            <div class="fw-medium text-dark mt-0.5"><?= htmlspecialchars(ucfirst($stop['transport_type'])) ?> <?= !empty($stop['transport_note']) ? '— ' . htmlspecialchars($stop['transport_note']) : '' ?></div>
                                         </div>
                                     <?php endif; ?>
-                                    <?php if ($stop['notes']): ?>
+                                    <?php if (!empty($stop['notes'])): ?>
                                         <div class="col-md-4">
                                             <div class="small text-muted text-uppercase fw-bold"><i class="fa-solid fa-note-sticky me-1 text-warning"></i> Notes</div>
                                             <div class="text-secondary small mt-0.5"><?= htmlspecialchars($stop['notes']) ?></div>

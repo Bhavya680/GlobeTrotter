@@ -136,10 +136,10 @@ HTML;
                id="viewBtn{$t['id']}">
                 <i class="fa-solid fa-eye"></i> View
             </a>
-            <a href="create-trip.php?trip_id={$t['id']}"
+            <a href="itinerary-builder.php?trip_id={$t['id']}"
                class="btn-trip-action btn-trip-edit"
                id="editBtn{$t['id']}">
-                <i class="fa-solid fa-pen"></i> Edit
+                <i class="fa-solid fa-pen"></i> Builder
             </a>
 HTML;
     if ($status === 'completed') {
@@ -163,8 +163,7 @@ HTML;
             </button>
 HTML;
     }
-    echo "</div></div>
-";
+    echo "</div></div>\n";
 }
 ?>
 

@@ -3,14 +3,23 @@ require_once __DIR__ . '/../includes/auth.php';
 
 $userId = require_login();
 $method = $_SERVER['REQUEST_METHOD'];
+$action = clean_str($_GET['action'] ?? '');
 
 switch ($method) {
     case 'GET':
-        handle_get($pdo, $userId);
+        if ($action === 'saved_destinations') {
+            get_saved_destinations($pdo, $userId);
+        } else {
+            handle_get($pdo, $userId);
+        }
         break;
     case 'PUT':
     case 'POST':
-        handle_update($pdo, $userId);
+        if ($action === 'toggle_saved') {
+            toggle_saved_destination($pdo, $userId);
+        } else {
+            handle_update($pdo, $userId);
+        }
         break;
     case 'DELETE':
         handle_delete($pdo, $userId);
@@ -21,7 +30,7 @@ switch ($method) {
 
 function handle_get(PDO $pdo, int $userId): void {
     $stmt = $pdo->prepare('
-        SELECT id, first_name AS name, email, profile_photo, role, created_at
+        SELECT id, first_name, last_name, email, phone, city, country, profile_photo, additional_info, language_pref, role, created_at
         FROM users WHERE id = ?
     ');
     $stmt->execute([$userId]);
@@ -30,6 +39,16 @@ function handle_get(PDO $pdo, int $userId): void {
     if (!$user) {
         json_error('User not found', 404);
     }
+
+    $savedStmt = $pdo->prepare('
+        SELECT c.id, c.name, c.country, c.image_url, c.cost_index
+        FROM saved_destinations sd
+        JOIN cities c ON c.id = sd.city_id
+        WHERE sd.user_id = ?
+        ORDER BY sd.saved_at DESC
+    ');
+    $savedStmt->execute([$userId]);
+    $user['saved_destinations'] = $savedStmt->fetchAll();
 
     json_success($user);
 }
@@ -40,9 +59,11 @@ function handle_update(PDO $pdo, int $userId): void {
     $fields = [];
     $params = [];
 
-    if (isset($body['name']) && trim($body['name']) !== '') {
-        $fields[] = 'first_name = ?';
-        $params[] = clean_str($body['name']);
+    foreach (['first_name', 'last_name', 'phone', 'city', 'country', 'additional_info', 'language_pref'] as $key) {
+        if (isset($body[$key])) {
+            $fields[] = "{$key} = ?";
+            $params[] = clean_str($body[$key]);
+        }
     }
 
     if (isset($body['email']) && trim($body['email']) !== '') {
@@ -74,7 +95,7 @@ function handle_update(PDO $pdo, int $userId): void {
     }
 
     try {
-        if (!empty($_FILES['profile_photo'])) {
+        if (!empty($_FILES['profile_photo']['name'])) {
             $photoUrl = handle_image_upload('profile_photo', 'profiles');
             if ($photoUrl !== null) {
                 $fields[] = 'profile_photo = ?';
@@ -95,6 +116,36 @@ function handle_update(PDO $pdo, int $userId): void {
     $stmt->execute($params);
 
     handle_get($pdo, $userId);
+}
+
+function get_saved_destinations(PDO $pdo, int $userId): void {
+    $stmt = $pdo->prepare('
+        SELECT c.id, c.name, c.country, c.image_url, c.cost_index
+        FROM saved_destinations sd
+        JOIN cities c ON c.id = sd.city_id
+        WHERE sd.user_id = ?
+        ORDER BY sd.saved_at DESC
+    ');
+    $stmt->execute([$userId]);
+    json_success($stmt->fetchAll());
+}
+
+function toggle_saved_destination(PDO $pdo, int $userId): void {
+    $body = get_request_body();
+    $cityId = (int)($body['city_id'] ?? $_GET['city_id'] ?? 0);
+    if (!$cityId) json_error('city_id is required');
+
+    $check = $pdo->prepare('SELECT id FROM saved_destinations WHERE user_id = ? AND city_id = ?');
+    $check->execute([$userId, $cityId]);
+    $saved = $check->fetch();
+
+    if ($saved) {
+        $pdo->prepare('DELETE FROM saved_destinations WHERE id = ?')->execute([$saved['id']]);
+        json_success(['saved' => false]);
+    } else {
+        $pdo->prepare('INSERT INTO saved_destinations (user_id, city_id) VALUES (?, ?)')->execute([$userId, $cityId]);
+        json_success(['saved' => true]);
+    }
 }
 
 function handle_delete(PDO $pdo, int $userId): void {

@@ -544,3 +544,4 @@ $coverPhoto = $trip['cover_photo'] ? "uploads/covers/" . htmlspecialchars($trip[
 
 </body>
 </html>
+

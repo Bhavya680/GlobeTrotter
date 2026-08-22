@@ -1254,7 +1254,7 @@ function initIntersectionObserver() {
 function debounce(fn, delay) {
     let t;
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
-}
 </script>
+<script src="<?= SITE_URL ?>/assets/js/itinerary.js"></script>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>

@@ -6,13 +6,24 @@ $action = clean_str($_GET['action'] ?? '');
 
 switch ($method) {
     case 'GET':
-        $slug = clean_str($_GET['slug'] ?? '');
-        $slug !== '' ?: json_error('slug is required', 400);
-        get_public_trip($pdo, $slug);
+        if ($action === 'posts') {
+            get_community_posts($pdo);
+        } else {
+            $slug = clean_str($_GET['slug'] ?? '');
+            if ($slug !== '') {
+                get_public_trip($pdo, $slug);
+            } else {
+                get_community_posts($pdo);
+            }
+        }
         break;
     case 'POST':
         if ($action === 'copy') {
             copy_trip($pdo);
+        } elseif ($action === 'create_post') {
+            create_post($pdo);
+        } elseif ($action === 'like') {
+            toggle_like($pdo);
         } else {
             json_error('Unknown action', 400);
         }
@@ -21,13 +32,76 @@ switch ($method) {
         json_error('Method not allowed', 405);
 }
 
+function get_community_posts(PDO $pdo): void {
+    $currentUserId = current_user_id();
+    $stmt = $pdo->prepare('
+        SELECT p.id, p.user_id, p.trip_id, p.title, p.content, p.likes_count, p.created_at,
+               u.first_name, u.last_name, u.profile_photo,
+               t.trip_name,
+               CASE WHEN l.id IS NOT NULL THEN TRUE ELSE FALSE END AS user_liked
+        FROM community_posts p
+        JOIN users u ON u.id = p.user_id
+        LEFT JOIN trips t ON t.id = p.trip_id
+        LEFT JOIN community_likes l ON l.post_id = p.id AND l.user_id = ?
+        ORDER BY p.created_at DESC
+        LIMIT 50
+    ');
+    $stmt->execute([$currentUserId ?: 0]);
+    json_success($stmt->fetchAll());
+}
+
+function create_post(PDO $pdo): void {
+    $userId = require_login();
+    $body = get_request_body();
+
+    $title = clean_str($body['title'] ?? '');
+    $content = clean_str($body['content'] ?? '');
+    $tripId = !empty($body['trip_id']) ? (int)$body['trip_id'] : null;
+
+    if ($title === '' || $content === '') {
+        json_error('Title and content are required');
+    }
+
+    $stmt = $pdo->prepare('
+        INSERT INTO community_posts (user_id, trip_id, title, content)
+        VALUES (?, ?, ?, ?)
+        RETURNING id
+    ');
+    $stmt->execute([$userId, $tripId, $title, $content]);
+    $newId = (int)$stmt->fetchColumn();
+
+    json_success(['id' => $newId, 'message' => 'Post created successfully'], 201);
+}
+
+function toggle_like(PDO $pdo): void {
+    $userId = require_login();
+    $body = get_request_body();
+
+    $postId = (int)($body['post_id'] ?? $_GET['post_id'] ?? 0);
+    if (!$postId) json_error('post_id is required');
+
+    $check = $pdo->prepare('SELECT id FROM community_likes WHERE post_id = ? AND user_id = ?');
+    $check->execute([$postId, $userId]);
+    $like = $check->fetch();
+
+    if ($like) {
+        $pdo->prepare('DELETE FROM community_likes WHERE id = ?')->execute([$like['id']]);
+        $pdo->prepare('UPDATE community_posts SET likes_count = GREATEST(0, likes_count - 1) WHERE id = ?')->execute([$postId]);
+        json_success(['liked' => false]);
+    } else {
+        $pdo->prepare('INSERT INTO community_likes (post_id, user_id) VALUES (?, ?)')->execute([$postId, $userId]);
+        $pdo->prepare('UPDATE community_posts SET likes_count = likes_count + 1 WHERE id = ?')->execute([$postId]);
+        json_success(['liked' => true]);
+    }
+}
+
 function get_public_trip(PDO $pdo, string $slug): void {
     $stmt = $pdo->prepare('
-        SELECT t.id, t.trip_name AS name, t.start_date, t.end_date, t.description, t.cover_photo,
-               u.first_name AS owner_name
+        SELECT t.id, t.trip_name AS name, t.trip_name, t.start_date, t.end_date, t.description, t.cover_photo,
+               u.first_name, u.last_name, (u.first_name || \' \' || u.last_name) AS owner_name
         FROM trips t
         JOIN users u ON u.id = t.user_id
-        WHERE t.share_slug = ? AND t.visibility = 'public'
+        WHERE t.share_slug = ? AND t.visibility = \'public\'
     ');
     $stmt->execute([$slug]);
     $trip = $stmt->fetch();
@@ -61,7 +135,6 @@ function get_public_trip(PDO $pdo, string $slug): void {
     unset($stop);
 
     $trip['stops'] = $stops;
-
     json_success($trip);
 }
 
@@ -84,11 +157,11 @@ function copy_trip(PDO $pdo): void {
 
     $pdo->beginTransaction();
     try {
-        $newTripStmt = $pdo->prepare('
+        $newTripStmt = $pdo->prepare("
             INSERT INTO trips (user_id, trip_name, start_date, end_date, description, cover_photo, visibility)
             VALUES (?, ?, ?, ?, ?, ?, 'private')
             RETURNING id
-        ');
+        ");
         $newTripStmt->execute([
             $userId,
             $sourceTrip['trip_name'] . ' (copy)',

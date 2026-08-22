@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: globetrotter_web
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: globetrotter
+      DB_USER: postgres
+      DB_PASS: globetrotter_pass
+      SITE_URL: http://localhost:8080
+      APP_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/var/www/html/assets/uploads
+
+  db:
+    image: postgres:15-alpine
+    container_name: globetrotter_db
+    restart: always
+    environment:
+      POSTGRES_DB: globetrotter
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: globetrotter_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database.sql:/docker-entrypoint-initdb.d/database.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d globetrotter"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  uploads_data:

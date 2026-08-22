@@ -499,8 +499,6 @@ HTML;
         }
     };
 
-})();
 </script>
-
-</body>
-</html>
+<script src="<?= SITE_URL ?>/assets/js/trips.js"></script>
+<?php require_once __DIR__ . '/includes/footer.php'; ?>

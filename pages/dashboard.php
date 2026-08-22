@@ -316,7 +316,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="trip-card-cover">
                         <?php if (!empty($trip['cover_photo'])): ?>
                             <img src="<?= SITE_URL ?>/assets/uploads/covers/<?= htmlspecialchars($trip['cover_photo']) ?>"
-                                 alt="<?= htmlspecialchars($trip['trip_name']) ?>">
+                                 alt="<?= htmlspecialchars($trip['trip_name']) ?>" loading="lazy">
                         <?php else: ?>
                             <div class="trip-cover-gradient <?= $gradClass ?>">
                                 <i class="fa-solid <?= $gradIcon ?>"></i>

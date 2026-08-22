@@ -12,6 +12,7 @@ $email = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = strtolower(clean_str($_POST['email'] ?? ''));
     $password = (string) ($_POST['password'] ?? '');
+    $redirectAfterLogin = clean_str($_POST['redirect'] ?? $_GET['redirect'] ?? '');
 
     if ($email === '' || $password === '') {
         $errors['login'] = 'Please enter your email and password.';
@@ -31,11 +32,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $update->execute([$newHash, $user['id']]);
             }
 
-            header('Location: dashboard.php');
+            // Honour the redirect param if it's a safe relative URL
+            $safeRedirect = 'dashboard.php';
+            if ($redirectAfterLogin !== '' && str_starts_with($redirectAfterLogin, '/')) {
+                $safeRedirect = $redirectAfterLogin;
+            }
+            header('Location: ' . $safeRedirect);
             exit;
         }
     }
 }
+$redirectParam = clean_str($_GET['redirect'] ?? '');
 require_once __DIR__ . '/../../includes/header.php';
 ?>
 <div class="auth-page">

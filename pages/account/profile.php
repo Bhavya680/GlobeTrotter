@@ -151,7 +151,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="card-body text-center py-5">
             <div class="profile-photo-container mb-3" onclick="document.getElementById('profPhotoUpload').click();">
                 <?php if ($userPhoto): ?>
-                    <img src="<?= $userPhoto ?>" style="width: 100%; height: 100%; object-fit: cover;" id="profileImgPreview">
+                    <img src="<?= $userPhoto ?>" style="width: 100%; height: 100%; object-fit: cover;" id="profileImgPreview" loading="lazy">
                 <?php else: ?>
                     <span id="profileImgInitial"><?= strtoupper(substr($user['first_name'], 0, 1)) ?></span>
                 <?php endif; ?>

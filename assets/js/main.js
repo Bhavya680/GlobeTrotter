@@ -1,15 +1,32 @@
+/**
+ * GlobeTrotter Global Client Utilities
+ */
+
 document.addEventListener('DOMContentLoaded', function() {
     initGlobalToast();
     initNavbarSearch();
     initNavbarFilters();
     initUserDropdown();
+    initCurrencyInputs();
 });
 
+/**
+ * Universal AJAX Request Wrapper with automatic CSRF token injection
+ */
 async function api(method, url, data) {
+    const verb = method.toUpperCase();
     const options = {
-        method: method.toUpperCase(),
-        headers: {},
+        method: verb,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
     };
+
+    // Inject CSRF token for mutating methods
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    if (csrfMeta && csrfMeta.content) {
+        options.headers['X-CSRF-Token'] = csrfMeta.content;
+    }
 
     if (data) {
         if (data instanceof FormData) {
@@ -28,44 +45,97 @@ async function api(method, url, data) {
         }
         return result;
     } catch (err) {
-        console.error('API Request Error:', err);
+        console.error('API Request Error (' + url + '):', err);
         throw err;
     }
 }
 
+/**
+ * Toast Notification System
+ */
 function initGlobalToast() {
     if (!document.getElementById('gtToastContainer')) {
         const container = document.createElement('div');
         container.id = 'gtToastContainer';
-        container.className = 'position-fixed bottom-0 end-0 p-3';
-        container.style.zIndex = '9999';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '99999';
         document.body.appendChild(container);
     }
 }
 
+function showToast(message, type) {
+    toast(message, type);
+}
+
 function toast(message, type) {
     if (!type) type = 'info';
-    const container = document.getElementById('gtToastContainer');
+    let container = document.getElementById('gtToastContainer');
+    if (!container) {
+        initGlobalToast();
+        container = document.getElementById('gtToastContainer');
+    }
     if (!container) return;
 
     const toastEl = document.createElement('div');
-    const bgClass = type === 'error' ? 'danger' : (type === 'success' ? 'success' : 'primary');
-    toastEl.className = 'toast align-items-center text-white bg-' + bgClass + ' border-0 show shadow-lg mb-2';
+    let bgClass = 'bg-primary';
+    let iconClass = 'fa-circle-info';
+
+    if (type === 'error' || type === 'danger') {
+        bgClass = 'bg-danger';
+        iconClass = 'fa-triangle-exclamation';
+    } else if (type === 'success') {
+        bgClass = 'bg-success';
+        iconClass = 'fa-circle-check';
+    } else if (type === 'warning') {
+        bgClass = 'bg-warning text-dark';
+        iconClass = 'fa-circle-exclamation';
+    }
+
+    toastEl.className = 'toast align-items-center text-white border-0 show shadow-lg mb-2 rounded-3 overflow-hidden ' + bgClass;
     toastEl.setAttribute('role', 'alert');
     toastEl.setAttribute('aria-live', 'assertive');
     toastEl.setAttribute('aria-atomic', 'true');
 
-    const iconClass = type === 'success' ? 'fa-circle-check' : (type === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-info');
+    const textColorClass = type === 'warning' ? 'text-dark' : 'text-white';
 
-    toastEl.innerHTML = '<div class="d-flex"><div class="toast-body d-flex align-items-center gap-2"><i class="fa-solid ' + iconClass + '"></i><span>' + escapeHtml(message) + '</span></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>';
+    toastEl.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between p-3 ${textColorClass}">
+            <div class="d-flex align-items-center gap-2.5">
+                <i class="fa-solid ${iconClass} fs-5"></i>
+                <span class="fw-medium">${escapeHtml(message)}</span>
+            </div>
+            <button type="button" class="btn-close ${type === 'warning' ? '' : 'btn-close-white'} ms-3" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
 
     container.appendChild(toastEl);
+
     setTimeout(function() {
         toastEl.classList.remove('show');
         setTimeout(function() { toastEl.remove(); }, 300);
-    }, 4000);
+    }, 3200);
 }
 
+/**
+ * Reusable Loading States for Buttons
+ */
+function showLoading(element, loadingText) {
+    if (!element) return;
+    element.dataset.originalHtml = element.innerHTML;
+    element.disabled = true;
+    const text = loadingText || 'Loading...';
+    element.innerHTML = `<span class="spinner-border spinner-border-sm me-1.5" role="status" aria-hidden="true"></span> ${escapeHtml(text)}`;
+}
+
+function hideLoading(element, originalHtml) {
+    if (!element) return;
+    element.disabled = false;
+    element.innerHTML = originalHtml || element.dataset.originalHtml || 'Submit';
+}
+
+/**
+ * Navbar Instant Search & Suggestions
+ */
 function initNavbarSearch() {
     const searchInput = document.getElementById('navSearchInput');
     const autocompleteBox = document.getElementById('navAutocomplete');
@@ -160,6 +230,18 @@ function initUserDropdown() {
 
     document.addEventListener('click', function() {
         menu.classList.remove('active');
+    });
+}
+
+function initCurrencyInputs() {
+    const currencyInputs = document.querySelectorAll('.currency-input, input[name="budget"], input[name="estimated_cost"], input[name="amount"]');
+    currencyInputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            let val = parseFloat(input.value);
+            if (!isNaN(val) && val >= 0) {
+                input.value = val.toFixed(2);
+            }
+        });
     });
 }
 

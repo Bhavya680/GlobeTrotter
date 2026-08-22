@@ -14,14 +14,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = (string) ($_POST['password'] ?? '');
 
     if ($email === '' || $password === '') {
-        $errors[] = 'Please enter your email and password.';
+        $errors['login'] = 'Please enter your email and password.';
     } else {
         $stmt = $pdo->prepare('SELECT id, password_hash FROM users WHERE email = ?');
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
         if (!$user || !password_verify($password, $user['password_hash'])) {
-            $errors[] = 'Invalid email or password.';
+            $errors['login'] = 'Invalid email or password.';
         } else {
             login_user((int) $user['id']);
 
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $update->execute([$newHash, $user['id']]);
             }
 
-            header('Location: /dashboard.php');
+            header('Location: dashboard.php');
             exit;
         }
     }

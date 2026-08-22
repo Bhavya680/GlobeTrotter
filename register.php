@@ -2,39 +2,64 @@
 require_once __DIR__ . '/includes/auth.php';
 
 if (is_logged_in()) {
-    header('Location: /dashboard.php');
+    header('Location: dashboard.php');
     exit;
 }
 
 $errors = [];
-$name = '';
-$email = '';
+$formData = [
+    'first_name' => '',
+    'last_name' => '',
+    'email' => '',
+    'phone' => '',
+    'city' => '',
+    'country' => '',
+    'additional_info' => '',
+];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = clean_str($_POST['name'] ?? '');
-    $email = strtolower(clean_str($_POST['email'] ?? ''));
-    $password = (string) ($_POST['password'] ?? '');
+    $formData['first_name']      = clean_str($_POST['first_name'] ?? '');
+    $formData['last_name']       = clean_str($_POST['last_name'] ?? '');
+    $formData['email']           = strtolower(clean_str($_POST['email'] ?? ''));
+    $formData['phone']           = clean_str($_POST['phone'] ?? '');
+    $formData['city']            = clean_str($_POST['city'] ?? '');
+    $formData['country']         = clean_str($_POST['country'] ?? '');
+    $formData['additional_info'] = clean_str($_POST['additional_info'] ?? '');
+
+    $password        = (string) ($_POST['password'] ?? '');
     $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
-    $missing = missing_fields(['name' => $name, 'email' => $email, 'password' => $password], ['name', 'email', 'password']);
-    if ($missing) {
-        $errors[] = 'Please fill in all fields.';
+    if (strlen($formData['first_name']) < 2) {
+        $errors['first_name'] = 'Please enter at least 2 characters.';
     }
-    if ($email !== '' && !is_valid_email($email)) {
-        $errors[] = 'Please enter a valid email address.';
+    if (strlen($formData['last_name']) < 2) {
+        $errors['last_name'] = 'Please enter at least 2 characters.';
+    }
+    if ($formData['email'] === '' || !is_valid_email($formData['email'])) {
+        $errors['email'] = 'Please enter a valid email address.';
     }
     if (strlen($password) < 8) {
-        $errors[] = 'Password must be at least 8 characters.';
+        $errors['password'] = 'Password must be at least 8 characters.';
     }
     if ($password !== $confirmPassword) {
-        $errors[] = 'Passwords do not match.';
+        $errors['confirm_password'] = 'Passwords do not match.';
     }
 
     if (!$errors) {
         $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
-        $stmt->execute([$email]);
+        $stmt->execute([$formData['email']]);
         if ($stmt->fetch()) {
-            $errors[] = 'An account with that email already exists.';
+            $errors['email'] = 'An account with that email already exists.';
+        }
+    }
+
+    // Profile photo upload handling
+    $profilePhoto = null;
+    if (!$errors && !empty($_FILES['profile_photo']['name'])) {
+        try {
+            $profilePhoto = handle_image_upload('profile_photo', 'profiles');
+        } catch (RuntimeException $e) {
+            $errors['profile_photo'] = $e->getMessage();
         }
     }
 
@@ -42,19 +67,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $passwordHash = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $pdo->prepare('
-                INSERT INTO users (name, email, password_hash)
-                VALUES (?, ?, ?)
+                INSERT INTO users (first_name, last_name, email, password_hash, phone, city, country, profile_photo, additional_info)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING id
             ');
-            $stmt->execute([$name, $email, $passwordHash]);
+            $stmt->execute([
+                $formData['first_name'],
+                $formData['last_name'],
+                $formData['email'],
+                $passwordHash,
+                $formData['phone'] ?: null,
+                $formData['city'] ?: null,
+                $formData['country'] ?: null,
+                $profilePhoto,
+                $formData['additional_info'] ?: null,
+            ]);
             $newUserId = (int) $stmt->fetchColumn();
 
             login_user($newUserId);
-            header('Location: /dashboard.php');
+            header('Location: dashboard.php');
             exit;
         } catch (PDOException $e) {
             error_log('[GlobeTrotter] register.php insert failed: ' . $e->getMessage());
-            $errors[] = 'An account with that email already exists.';
+            $errors['general'] = 'Registration failed. An account with that email may already exist.';
         }
     }
 }

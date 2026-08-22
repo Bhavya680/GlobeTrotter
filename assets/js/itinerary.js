@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initStopActions();
     initStickyBar();
     initTripNameEdit();
+    initAutoFillItinerary();
 });
 
 const TRIP_ID = typeof TRIP_DATA !== 'undefined' ? TRIP_DATA.id : 0;
@@ -311,4 +312,73 @@ function debounce(fn, delay) {
         clearTimeout(t);
         t = setTimeout(function() { fn(...args); }, delay);
     };
+}
+
+function initAutoFillItinerary() {
+    const btn = document.getElementById('btnAutoFillItinerary');
+    if (!btn) return;
+
+    const sampleTransports = [
+        "Fly Express Airways, then shuttle bus to city center",
+        "High-speed Intercity Rail (Car 4, Seat 22B)",
+        "Private airport transfer & local metro pass"
+    ];
+
+    const sampleAccommodations = [
+        { name: "Grand Hotel Lumière", cost: 185 },
+        { name: "Metropolitan Boutique Hotel", cost: 140 },
+        { name: "Riverside Luxury Suites", cost: 220 }
+    ];
+
+    const sampleNotes = [
+        "Purchase 72-hour museum pass online. Remember to validate train tickets before boarding.",
+        "Local currency needed for street food markets. Try the morning food tasting tour!",
+        "Pack comfortable walking shoes for cobblestone streets. Sunset viewpoint at 7:30 PM."
+    ];
+
+    btn.addEventListener('click', function() {
+        const totalBudgetInput = document.getElementById('totalBudgetInput');
+        if (totalBudgetInput) {
+            totalBudgetInput.value = '2500';
+            totalBudgetInput.dispatchEvent(new Event('change'));
+        }
+
+        const cards = document.querySelectorAll('.ib-stop-card');
+        cards.forEach((card, idx) => {
+            const accomInput = card.querySelector('.stop-accom');
+            const accomCostInput = card.querySelector('.stop-accom-cost');
+            const transportInput = card.querySelector('.stop-transport');
+            const notesInput = card.querySelector('.stop-notes');
+            const budgetInput = card.querySelector('.stop-budget');
+
+            const accom = sampleAccommodations[idx % sampleAccommodations.length];
+            const trans = sampleTransports[idx % sampleTransports.length];
+            const note = sampleNotes[idx % sampleNotes.length];
+
+            if (budgetInput) {
+                budgetInput.value = (750 + idx * 100).toString();
+                budgetInput.dispatchEvent(new Event('change'));
+            }
+            if (transportInput) {
+                transportInput.value = trans;
+                transportInput.dispatchEvent(new Event('change'));
+            }
+            if (accomInput) {
+                accomInput.value = accom.name;
+                accomInput.dispatchEvent(new Event('change'));
+            }
+            if (accomCostInput) {
+                accomCostInput.value = accom.cost.toString();
+                accomCostInput.dispatchEvent(new Event('change'));
+            }
+            if (notesInput) {
+                notesInput.value = note;
+                notesInput.dispatchEvent(new Event('change'));
+            }
+        });
+
+        if (typeof toast === 'function') {
+            toast('Auto-filled itinerary transport, stay, notes & budget!', 'success');
+        }
+    });
 }

@@ -39,6 +39,26 @@ function initCreatePostForm() {
             toast(err.message || 'Error creating post', 'error');
         }
     });
+
+    document.getElementById('btnAutoFillStory')?.addEventListener('click', function() {
+        const sampleStories = [
+            { title: 'Magical Sunset at Montmartre & Local Bistro Crawl', content: 'We started our evening at the Sacré-Cœur steps watching street musicians, followed by an incredible 3-course tasting menu in Le Marais. Highly recommend booking early!' },
+            { title: 'Hidden Coffee Shops & Vintage Records in Tokyo', content: 'Explored the quiet alleyways of Shimokitazawa. Found incredible analog jazz cafes and vintage record stores. A must-visit side of Tokyo!' },
+            { title: 'Top 5 Tips for First-Time Coastal Hikers in Amalfi', content: 'Take the early morning bus to avoid crowds on Path of the Gods. Carry plenty of water and wear trail shoes with good grip!' }
+        ];
+        const choice = sampleStories[Math.floor(Math.random() * sampleStories.length)];
+        const titleEl = document.getElementById('postTitle');
+        const contentEl = document.getElementById('postContent');
+        const tripEl = document.getElementById('postTripId');
+        if (titleEl) titleEl.value = choice.title;
+        if (contentEl) contentEl.value = choice.content;
+        if (tripEl && tripEl.options && tripEl.options.length > 1) {
+            tripEl.selectedIndex = 1;
+        }
+        if (typeof toast === 'function') {
+            toast('Story details auto-filled!', 'success');
+        }
+    });
 }
 
 function initLikeButtons() {

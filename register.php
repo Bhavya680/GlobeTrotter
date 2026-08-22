@@ -102,9 +102,11 @@ require_once __DIR__ . '/includes/header.php';
                 <i class="fa-solid fa-globe"></i> Create Account
             </div>
             
-            <?php if (isset($errors['general'])): ?>
-                <div class="alert alert-danger"><?= htmlspecialchars($errors['general']) ?></div>
-            <?php endif; ?>
+            <div class="text-center mb-3">
+                <button type="button" class="btn btn-outline-success btn-sm w-100" id="btnAutoFillRegister">
+                    <i class="fa-solid fa-bolt text-warning me-1"></i> Auto-Fill Demo Registration Details
+                </button>
+            </div>
 
             <form action="register.php" method="POST" id="registerForm" enctype="multipart/form-data" novalidate>
                 <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
@@ -283,6 +285,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     confirmPasswordInput.addEventListener('input', validateConfirmPassword);
+
+    // Auto fill registration details
+    document.getElementById('btnAutoFillRegister')?.addEventListener('click', function() {
+        const rand = Math.floor(Math.random() * 8999 + 1000);
+        document.getElementById('first_name').value = 'Sarah';
+        document.getElementById('last_name').value = 'Jenkins';
+        document.getElementById('email').value = 'sarah.jenkins' + rand + '@example.com';
+        document.getElementById('phone').value = '+1 555-0192';
+        document.getElementById('city').value = 'San Francisco';
+        document.getElementById('country').value = 'USA';
+        document.getElementById('password').value = 'Password@123';
+        document.getElementById('confirm_password').value = 'Password@123';
+        const info = document.getElementById('additional_info');
+        if (info) info.value = 'Passionate traveler, photographer, and coffee enthusiast.';
+
+        document.querySelectorAll('#registerForm input[required]').forEach(i => {
+            i.classList.remove('is-invalid');
+            i.classList.add('is-valid');
+        });
+        if (typeof toast === 'function') {
+            toast('Registration details auto-filled!', 'success');
+        }
+    });
 
     // Form validation visuals on blur/input
     const inputs = registerForm.querySelectorAll('input[required], input[pattern]');

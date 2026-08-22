@@ -105,6 +105,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             foreach ($stops as $stop) {
+                $arrDate = !empty($stop['arrival_date']) ? $stop['arrival_date'] : ($startDate ?: null);
+                $depDate = !empty($stop['departure_date']) ? $stop['departure_date'] : ($endDate ?: null);
+
                 $si = $pdo->prepare(
                     "INSERT INTO trip_stops (trip_id,city_id,arrival_date,departure_date,order_index,notes)
                      VALUES (?,?,?,?,?,?) RETURNING id"
@@ -112,8 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $si->execute([
                     $savedTripId,
                     $stop['city_id'],
-                    $stop['arrival_date'] ?: null,
-                    $stop['departure_date'] ?: null,
+                    $arrDate,
+                    $depDate,
                     $stop['order_index'],
                     $stop['notes'] ?: null,
                 ]);

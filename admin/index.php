@@ -69,14 +69,15 @@ $catStmt = $pdo->query('
     FROM activities a
     LEFT JOIN trip_activities ta ON ta.activity_id = a.id
     GROUP BY a.category
-    ORDER BY times_used DESC
+    ORDER BY catalog_count DESC
 ');
 $categoryRows = $catStmt->fetchAll(PDO::FETCH_ASSOC);
+$totalUsed = array_sum(array_column($categoryRows, 'times_used'));
 $activityCatsLabels = [];
 $activityCatsData = [];
 foreach ($categoryRows as $cr) {
     $activityCatsLabels[] = ucfirst($cr['category']);
-    $activityCatsData[] = (int) $cr['times_used'];
+    $activityCatsData[] = $totalUsed > 0 ? (int) $cr['times_used'] : (int) $cr['catalog_count'];
 }
 
 // ── 5. TAB 4: TRENDS & ANALYTICS CHARTS ────────────────────────────────────────

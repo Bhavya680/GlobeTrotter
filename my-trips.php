@@ -143,20 +143,22 @@ HTML;
             </a>
 HTML;
     if ($status === 'completed') {
+        $shareTitle = $t['visibility'] !== 'public' ? 'title="Make trip public to share"' : '';
         echo <<<HTML
             <button type="button" class="btn-trip-action btn-trip-share"
                     id="shareBtn{$t['id']}"
                     onclick="openShare({$t['id']}, '{$initial}')"
-                    <?= $t['visibility'] !== 'public' ? 'title="Make trip public to share"' : '' ?>>
+                    {$shareTitle}>
                 <i class="fa-solid fa-share-nodes"></i> Share
             </button>
 HTML;
     }
     if ($status !== 'ongoing') {
+        $safeTripName = htmlspecialchars($t['trip_name'], ENT_QUOTES);
         echo <<<HTML
             <button type="button" class="btn-trip-action btn-trip-delete"
                     id="deleteBtn{$t['id']}"
-                    onclick="confirmDelete({$t['id']}, '" . htmlspecialchars($t['trip_name'], ENT_QUOTES) . "')">
+                    onclick="confirmDelete({$t['id']}, '{$safeTripName}')">
                 <i class="fa-solid fa-trash"></i> Delete
             </button>
 HTML;

@@ -91,11 +91,22 @@ $stmt->execute([$tripId]);
 $totalAccommodation = (float)$stmt->fetchColumn();
 $totalActualSpent += $totalAccommodation;
 
+// Fetch manual budget_items (expenses entered in budget-view)
+$stmt = $pdo->prepare("SELECT category, SUM(amount) as total FROM budget_items WHERE trip_id = ? GROUP BY category");
+$stmt->execute([$tripId]);
+$manualExpenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$manualByCategory = ['transport' => 0, 'stay' => 0, 'meals' => 0, 'other' => 0];
+foreach ($manualExpenses as $me) {
+    $manualByCategory[$me['category']] = (float)$me['total'];
+}
+$totalManualExpenses = array_sum($manualByCategory);
+$totalActualSpent += $totalManualExpenses;
+
 // Fetch budget
-$stmt = $pdo->prepare("SELECT * FROM trip_budget WHERE trip_id = ?");
+$stmt = $pdo->prepare("SELECT *, (transport_budget + stay_budget + activities_budget + meals_budget + misc_budget) AS total_budget FROM trip_budget WHERE trip_id = ?");
 $stmt->execute([$tripId]);
 $budget = $stmt->fetch(PDO::FETCH_ASSOC);
-$totalBudget = $budget ? (float)$budget['total_budget'] : 0;
+$totalBudget = $budget ? (float)($budget['total_budget'] ?? 0) : 0;
 
 $coverPhoto = $trip['cover_photo'] ? "uploads/covers/" . htmlspecialchars($trip['cover_photo']) : "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&h=400&fit=crop";
 
@@ -114,9 +125,11 @@ $coverPhoto = $trip['cover_photo'] ? "uploads/covers/" . htmlspecialchars($trip[
     <!-- Tailwind CSS (CDN for UI) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Chart.js -->
-    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
-
+    <!-- React & Recharts -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/prop-types@15/prop-types.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.5.0/umd/Recharts.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- Chart.js -->
@@ -308,15 +321,13 @@ $coverPhoto = $trip['cover_photo'] ? "uploads/covers/" . htmlspecialchars($trip[
                     <!-- Donut Chart placeholder for non-owners if needed -->
                     <div class="<?= $isOwner ? 'hidden' : '' ?>">
                         <h4 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 text-center">Budget Allocation</h4>
-                        <div class="mb-8 flex justify-center w-full relative" style="height: 288px;">
-                            <canvas id="budgetDonutChart"></canvas>
-                        </div>
+                        <div id="budget-donut-root" style="position: relative; height: 260px; max-height: 260px; width: 100%; overflow: hidden;"></div>
                     </div>
                     
                     <!-- Chart.js Bar Chart -->
                     <div>
                         <h4 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 text-center">Budget vs Actual</h4>
-                        <div class="relative h-72 w-full">
+                        <div style="position: relative; height: 260px; max-height: 260px; width: 100%; overflow: hidden;">
                             <canvas id="barChart"></canvas>
                         </div>
                     </div>
@@ -337,21 +348,27 @@ $coverPhoto = $trip['cover_photo'] ? "uploads/covers/" . htmlspecialchars($trip[
             
             <div class="mb-6">
                 <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Spent</div>
-                <div class="text-3xl font-extrabold text-emerald-600">$<span id="sidebarActual">0.00</span></div>
+                <div class="text-3xl font-extrabold text-emerald-600">$<span id="sidebarActual"><?= number_format($totalActualSpent, 2) ?></span></div>
             </div>
             
             <div class="mb-6">
                 <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Budget</div>
-                <div class="text-xl font-bold text-slate-700">$<span id="sidebarBudget">0.00</span></div>
+                <div class="text-xl font-bold text-slate-700">$<span id="sidebarBudget"><?= number_format($totalBudget, 2) ?></span></div>
             </div>
             
+<?php
+    $pct = $totalBudget > 0 ? ($totalActualSpent / $totalBudget) * 100 : ($totalActualSpent > 0 ? 100 : 0);
+    $barWidth = min($pct, 100);
+    $barColor = $pct < 75 ? 'bg-emerald-500' : ($pct < 100 ? 'bg-amber-500' : 'bg-rose-500');
+    $avgCost = $durationDays > 0 ? $totalActualSpent / $durationDays : 0;
+?>
             <div class="mb-8">
                 <div class="flex justify-between text-sm mb-2 font-medium">
                     <span class="text-slate-600">Budget Used</span>
-                    <span id="sidebarPercent" class="text-slate-800">0%</span>
+                    <span id="sidebarPercent" class="text-slate-800"><?= number_format($pct, 1) ?>%</span>
                 </div>
                 <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                    <div id="sidebarProgress" class="bg-blue-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    <div id="sidebarProgress" class="<?= $barColor ?> h-2.5 rounded-full transition-all duration-500" style="width: <?= $barWidth ?>%"></div>
                 </div>
             </div>
             
@@ -361,7 +378,7 @@ $coverPhoto = $trip['cover_photo'] ? "uploads/covers/" . htmlspecialchars($trip[
                 </div>
                 <div>
                     <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Avg Cost / Day</div>
-                    <div class="text-lg font-bold text-slate-800">$<span id="avgCostPerDay">0.00</span></div>
+                    <div class="text-lg font-bold text-slate-800">$<span id="avgCostPerDay"><?= number_format($avgCost, 2) ?></span></div>
                 </div>
             </div>
             

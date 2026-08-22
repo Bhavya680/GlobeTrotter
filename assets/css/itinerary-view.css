@@ -2,6 +2,15 @@
    GlobeTrotter – Itinerary View Styles
    ============================================= */
 
+:root {
+    --ib-primary: #2563eb;
+    --ib-dark: #0f172a;
+    --ib-border: rgba(226,232,240,0.9);
+    --ib-shadow-sm: 0 2px 12px rgba(0,0,0,0.06);
+    --ib-shadow-md: 0 8px 32px rgba(0,0,0,0.1);
+    --ib-radius: 18px;
+    --ib-radius-sm: 10px;
+}
 /* ── Top Bar ──────────────────────────────────────────── */
 .iv-topbar {
     background: #fff;

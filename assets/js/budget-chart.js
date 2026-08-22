@@ -88,7 +88,7 @@ const BudgetDonutChart = () => {
   };
 
   return (
-    <div className="h-72 w-full">
+    <div className="h-64 w-full" style={{ position: 'relative', height: '250px', maxHeight: '250px', overflow: 'hidden' }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie

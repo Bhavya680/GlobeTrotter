@@ -219,7 +219,8 @@ INSERT INTO activities (city_id, name, description, category, cost, duration_hou
 (4, 'Central Park Bike Tour',    'Guided cycling tour through Central Park.',    'sightseeing',   28.00, 2, NULL)
 ON CONFLICT DO NOTHING;
 
--- Seed Admin User (Password: Admin@123)
+-- Seed Demo Users (Admin: Admin@123 | Traveler: Traveler@123)
 INSERT INTO users (first_name, last_name, email, password_hash, role) VALUES
-('Admin', 'User', 'admin@globetrotter.dev', '$2y$10$gdNM3dX3//fjJJ6S/DtMxO6Ff5LsgEuFZ7PxMP6JHOgQWnzjsEsiC', 'admin')
+('Admin', 'User', 'admin@globetrotter.dev', '$2y$10$gdNM3dX3//fjJJ6S/DtMxO6Ff5LsgEuFZ7PxMP6JHOgQWnzjsEsiC', 'admin'),
+('Alex', 'Traveler', 'traveler@globetrotter.dev', '$2y$12$knJTQlDmFJehC6F.6scI7OByDrxUYgjOjiL65dx6Pyvr8siKLc4rq', 'user')
 ON CONFLICT (email) DO NOTHING;

@@ -55,6 +55,18 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
             <?php endif; ?>
 
+            <div class="demo-login-box bg-light border rounded p-3 mb-3 text-center">
+                <div class="small fw-bold text-muted text-uppercase mb-2"><i class="fa-solid fa-bolt text-warning me-1"></i> Quick Demo Login</div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm flex-fill demo-fill-btn" data-email="admin@globetrotter.dev" data-pass="Admin@123">
+                        <i class="fa-solid fa-user-shield me-1"></i> Admin User
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm flex-fill demo-fill-btn" data-email="traveler@globetrotter.dev" data-pass="Traveler@123">
+                        <i class="fa-solid fa-plane-departure me-1"></i> Demo Traveler
+                    </button>
+                </div>
+            </div>
+
             <form action="login.php" method="POST" id="loginForm" novalidate>
                 <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
                 <div class="mb-3">
@@ -134,6 +146,25 @@ document.addEventListener('DOMContentLoaded', function() {
         input.addEventListener('blur', function() {
             if (!this.checkValidity()) {
                 this.classList.add('is-invalid');
+            }
+        });
+    });
+
+    // Quick demo credentials fill buttons
+    document.querySelectorAll('.demo-fill-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const emailInput = document.getElementById('email');
+            const passInput = document.getElementById('password');
+            if (emailInput && passInput) {
+                emailInput.value = btn.dataset.email;
+                passInput.value = btn.dataset.pass;
+                emailInput.classList.remove('is-invalid');
+                emailInput.classList.add('is-valid');
+                passInput.classList.remove('is-invalid');
+                passInput.classList.add('is-valid');
+                if (typeof toast === 'function') {
+                    toast('Credentials filled for ' + btn.textContent.trim(), 'success');
+                }
             }
         });
     });

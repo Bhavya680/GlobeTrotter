@@ -4,7 +4,7 @@ define('DB_HOST', 'localhost');
 define('DB_PORT', '5432');
 define('DB_NAME', 'globetrotter');
 define('DB_USER', 'postgres');
-define('DB_PASS', '');
+define('DB_PASS', 'Asdf@123');
 
 // Site Constants
 define('SITE_NAME', 'GlobeTrotter');

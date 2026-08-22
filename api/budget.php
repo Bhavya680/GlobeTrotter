@@ -43,7 +43,7 @@ if ($method === 'GET') {
     }
 
     // 1. Fetch Budget
-    $stmt = $pdo->prepare("SELECT transport_budget, stay_budget, activities_budget, meals_budget, misc_budget, total_budget FROM trip_budget WHERE trip_id = ?");
+    $stmt = $pdo->prepare("SELECT transport_budget, stay_budget, activities_budget, meals_budget, misc_budget, (transport_budget + stay_budget + activities_budget + meals_budget + misc_budget) AS total_budget FROM trip_budget WHERE trip_id = ?");
     $stmt->execute([$tripId]);
     $budget = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -95,6 +95,24 @@ if ($method === 'GET') {
     $stmt->execute([$tripId]);
     $stayCost = (float)$stmt->fetchColumn();
     $actuals['stay'] += $stayCost;
+
+    // 3. Add manual budget_items (expenses) to actuals
+    $stmt = $pdo->prepare("SELECT category, SUM(amount) as total FROM budget_items WHERE trip_id = ? GROUP BY category");
+    $stmt->execute([$tripId]);
+    $manualExpenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($manualExpenses as $me) {
+        $cat = $me['category'];
+        $cost = (float)$me['total'];
+        if ($cat === 'transport') {
+            $actuals['transport'] += $cost;
+        } elseif ($cat === 'stay') {
+            $actuals['stay'] += $cost;
+        } elseif ($cat === 'meals') {
+            $actuals['meals'] += $cost;
+        } else {
+            $actuals['misc'] += $cost; // 'other'
+        }
+    }
 
     echo json_encode([
         'budget' => [

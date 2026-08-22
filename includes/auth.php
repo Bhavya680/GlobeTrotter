@@ -87,14 +87,15 @@ function isLoggedIn() {
 
 function requireLogin() {
     if (!is_logged_in()) {
-        redirect('login.php');
+        redirect('/login.php');
     }
 }
 
 function requireAdmin() {
     requireLogin();
     if (!is_admin_user()) {
-        redirect('dashboard.php');
+        setFlash('danger', 'Access denied.');
+        redirect('/dashboard.php');
     }
 }
 

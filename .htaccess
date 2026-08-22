@@ -31,5 +31,9 @@ DirectoryIndex index.php dashboard.php login.php
     Deny from all
 </FilesMatch>
 
+# Custom Error Pages
+ErrorDocument 404 /404.php
+ErrorDocument 500 /error.php
+
 # Enable Options
 Options -Indexes +FollowSymLinks

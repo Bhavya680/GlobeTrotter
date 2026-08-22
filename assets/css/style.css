@@ -178,3 +178,119 @@ body {
 .is-invalid ~ .invalid-feedback {
     display: block;
 }
+
+/* Skeleton Loading State Animations */
+.skeleton-box {
+    display: inline-block;
+    height: 1em;
+    position: relative;
+    overflow: hidden;
+    background-color: #E2E8F0;
+    border-radius: 4px;
+}
+
+.skeleton-box::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0,
+        rgba(255, 255, 255, 0.4) 20%,
+        rgba(255, 255, 255, 0.7) 60%,
+        rgba(255, 255, 255, 0)
+    );
+    animation: shimmer 1.6s infinite;
+    content: '';
+}
+
+@keyframes shimmer {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.skeleton-card {
+    border-radius: 16px;
+    background: #ffffff;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Empty State Styling */
+.empty-state {
+    text-align: center;
+    padding: 3.5rem 1.5rem;
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px dashed #CBD5E1;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    color: #94A3B8;
+    margin-bottom: 1rem;
+    display: inline-block;
+}
+
+.empty-state-title {
+    font-weight: 700;
+    color: #1E293B;
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state-desc {
+    color: #64748B;
+    font-size: 0.925rem;
+    max-width: 420px;
+    margin: 0 auto 1.5rem auto;
+}
+
+/* Social Share Button Colors */
+.btn-share-whatsapp {
+    background-color: #25D366;
+    color: #ffffff;
+    border: none;
+}
+.btn-share-whatsapp:hover {
+    background-color: #1EBE5D;
+    color: #ffffff;
+}
+
+.btn-share-twitter {
+    background-color: #000000;
+    color: #ffffff;
+    border: none;
+}
+.btn-share-twitter:hover {
+    background-color: #181818;
+    color: #ffffff;
+}
+
+.btn-share-facebook {
+    background-color: #1877F2;
+    color: #ffffff;
+    border: none;
+}
+.btn-share-facebook:hover {
+    background-color: #0D65D9;
+    color: #ffffff;
+}
+
+/* General Layout & Polish */
+.rounded-4 {
+    border-radius: 1rem !important;
+}
+
+.shadow-xs {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.shadow-2xs {
+    box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.03) !important;
+}
+

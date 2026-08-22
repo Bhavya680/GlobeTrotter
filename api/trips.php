@@ -5,12 +5,22 @@ $userId = require_login();
 $method = $_SERVER['REQUEST_METHOD'];
 $tripId = isset($_GET['id']) ? (int) $_GET['id'] : null;
 
+$action = clean_str($_GET['action'] ?? '');
+
 switch ($method) {
     case 'GET':
-        $tripId ? get_one($pdo, $userId, $tripId) : get_list($pdo, $userId);
+        if ($action === 'copy') {
+            copy_trip($pdo, $userId);
+        } else {
+            $tripId ? get_one($pdo, $userId, $tripId) : get_list($pdo, $userId);
+        }
         break;
     case 'POST':
-        create_trip($pdo, $userId);
+        if ($action === 'copy') {
+            copy_trip($pdo, $userId);
+        } else {
+            create_trip($pdo, $userId);
+        }
         break;
     case 'PUT':
         $tripId ? update_trip($pdo, $userId, $tripId) : json_error('Trip id required', 400);
@@ -215,4 +225,121 @@ function delete_trip(PDO $pdo, int $userId, int $tripId): void
     $stmt = $pdo->prepare('DELETE FROM trips WHERE id = ? AND user_id = ?');
     $stmt->execute([$tripId, $userId]);
     json_success(['deleted' => true]);
+}
+
+function copy_trip(PDO $pdo, int $userId): void
+{
+    $body = get_request_body();
+    $sourceTripId = isset($body['trip_id']) ? (int) $body['trip_id'] : (isset($_GET['id']) ? (int) $_GET['id'] : 0);
+    $slug = clean_str($body['slug'] ?? $_GET['slug'] ?? '');
+
+    if (!$sourceTripId && $slug === '') {
+        json_error('Trip ID or slug is required', 400);
+    }
+
+    if ($sourceTripId) {
+        $stmt = $pdo->prepare('SELECT * FROM trips WHERE id = ?');
+        $stmt->execute([$sourceTripId]);
+    } else {
+        $stmt = $pdo->prepare('SELECT * FROM trips WHERE share_slug = ?');
+        $stmt->execute([$slug]);
+    }
+    $sourceTrip = $stmt->fetch();
+
+    if (!$sourceTrip) {
+        json_error('Trip not found', 404);
+    }
+
+    // Must be public OR owned by requester
+    if ($sourceTrip['visibility'] !== 'public' && (int) $sourceTrip['user_id'] !== $userId) {
+        json_error('Cannot copy a private trip', 403);
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $newName = 'Copy of ' . ($sourceTrip['trip_name'] ?: 'Trip');
+        $startDate = $sourceTrip['start_date'];
+        $endDate = $sourceTrip['end_date'];
+        $desc = $sourceTrip['description'];
+        $cover = $sourceTrip['cover_photo'];
+        $status = $sourceTrip['status'] ?: 'upcoming';
+        $visibility = 'private'; // Copies default to private
+
+        $insertTrip = $pdo->prepare('
+            INSERT INTO trips (user_id, trip_name, start_date, end_date, description, cover_photo, status, visibility)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            RETURNING id
+        ');
+        $insertTrip->execute([$userId, $newName, $startDate, $endDate, $desc, $cover, $status, $visibility]);
+        $newTripId = (int) $insertTrip->fetchColumn();
+
+        // Copy stops
+        $stopsStmt = $pdo->prepare('
+            SELECT * FROM trip_stops WHERE trip_id = ? ORDER BY order_index ASC
+        ');
+        $stopsStmt->execute([$sourceTrip['id']]);
+        $sourceStops = $stopsStmt->fetchAll();
+
+        foreach ($sourceStops as $s) {
+            $insertStop = $pdo->prepare('
+                INSERT INTO trip_stops (
+                    trip_id, city_id, arrival_date, departure_date, order_index,
+                    transport_type, transport_note, transport_cost, budget_for_stop,
+                    accommodation, accommodation_cost, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                RETURNING id
+            ');
+            $insertStop->execute([
+                $newTripId,
+                $s['city_id'],
+                $s['arrival_date'],
+                $s['departure_date'],
+                $s['order_index'],
+                $s['transport_type'] ?? null,
+                $s['transport_note'] ?? null,
+                $s['transport_cost'] ?? 0,
+                $s['budget_for_stop'] ?? 0,
+                $s['accommodation'] ?? null,
+                $s['accommodation_cost'] ?? 0,
+                $s['notes'] ?? null
+            ]);
+            $newStopId = (int) $insertStop->fetchColumn();
+
+            // Copy activities for this stop
+            $actsStmt = $pdo->prepare('
+                SELECT * FROM trip_activities WHERE trip_stop_id = ?
+            ');
+            $actsStmt->execute([$s['id']]);
+            $sourceActs = $actsStmt->fetchAll();
+
+            foreach ($sourceActs as $a) {
+                $insertAct = $pdo->prepare('
+                    INSERT INTO trip_activities (
+                        trip_stop_id, activity_id, scheduled_date, scheduled_time, notes, cost
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                ');
+                $insertAct->execute([
+                    $newStopId,
+                    $a['activity_id'],
+                    $a['scheduled_date'],
+                    $a['scheduled_time'],
+                    $a['notes'] ?? null,
+                    $a['cost'] ?? 0
+                ]);
+            }
+        }
+
+        $pdo->commit();
+
+        json_success([
+            'trip_id' => $newTripId,
+            'message' => 'Trip copied successfully to your account!'
+        ]);
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        json_error('Failed to copy trip: ' . $e->getMessage(), 500);
+    }
 }

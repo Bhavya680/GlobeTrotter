@@ -167,3 +167,81 @@ function redirect(string $url): void {
     header("Location: $url");
     exit;
 }
+
+/**
+ * 🍉 Render Watermelon UI Themed Glassmorphic Pagination
+ */
+function render_watermelon_pagination(int $currentPage, int $totalPages, string $baseUrl = '?page=', array $options = []): string {
+    if ($totalPages <= 1) return '';
+
+    $range = $options['range'] ?? 2;
+    $compact = $options['compact'] ?? false;
+    $totalItems = $options['total_items'] ?? null;
+
+    $urlFor = function(int $p) use ($baseUrl) {
+        if (str_contains($baseUrl, '{page}')) {
+            return str_replace('{page}', (string) $p, $baseUrl);
+        }
+        $sep = (str_contains($baseUrl, '?') ? '&' : '?');
+        if (str_ends_with($baseUrl, '=') || str_ends_with($baseUrl, '?') || str_ends_with($baseUrl, '&')) {
+            return $baseUrl . $p;
+        }
+        return $baseUrl . $sep . 'page=' . $p;
+    };
+
+    $html = '<nav aria-label="Page navigation" class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3 my-4">';
+    
+    if ($totalItems !== null) {
+        $html .= '<div class="wm-pagination-meta text-muted small">Showing page <span class="highlight">' . $currentPage . '</span> of <span class="highlight">' . $totalPages . '</span> (' . $totalItems . ' total destinations)</div>';
+    } else {
+        $html .= '<div></div>';
+    }
+
+    $html .= '<div class="' . ($compact ? 'wm-pagination-compact' : 'wm-pagination') . '">';
+
+    // Previous Button
+    if ($currentPage > 1) {
+        $html .= '<a href="' . htmlspecialchars($urlFor($currentPage - 1)) . '" class="wm-page-item wm-page-nav" title="Previous Page"><i class="fa-solid fa-chevron-left fa-xs"></i> <span>Prev</span></a>';
+    } else {
+        $html .= '<button class="wm-page-item wm-page-nav" disabled><i class="fa-solid fa-chevron-left fa-xs"></i> <span>Prev</span></button>';
+    }
+
+    // Page Numbers with Smart Ellipsis
+    $start = max(1, $currentPage - $range);
+    $end = min($totalPages, $currentPage + $range);
+
+    if ($start > 1) {
+        $html .= '<a href="' . htmlspecialchars($urlFor(1)) . '" class="wm-page-item">1</a>';
+        if ($start > 2) {
+            $html .= '<span class="wm-page-ellipsis">&hellip;</span>';
+        }
+    }
+
+    for ($p = $start; $p <= $end; $p++) {
+        if ($p === $currentPage) {
+            $html .= '<span class="wm-page-item active" aria-current="page">' . $p . '</span>';
+        } else {
+            $html .= '<a href="' . htmlspecialchars($urlFor($p)) . '" class="wm-page-item">' . $p . '</a>';
+        }
+    }
+
+    if ($end < $totalPages) {
+        if ($end < $totalPages - 1) {
+            $html .= '<span class="wm-page-ellipsis">&hellip;</span>';
+        }
+        $html .= '<a href="' . htmlspecialchars($urlFor($totalPages)) . '" class="wm-page-item">' . $totalPages . '</a>';
+    }
+
+    // Next Button
+    if ($currentPage < $totalPages) {
+        $html .= '<a href="' . htmlspecialchars($urlFor($currentPage + 1)) . '" class="wm-page-item wm-page-nav" title="Next Page"><span>Next</span> <i class="fa-solid fa-chevron-right fa-xs"></i></a>';
+    } else {
+        $html .= '<button class="wm-page-item wm-page-nav" disabled><span>Next</span> <i class="fa-solid fa-chevron-right fa-xs"></i></button>';
+    }
+
+    $html .= '</div>';
+    $html .= '</nav>';
+
+    return $html;
+}
+

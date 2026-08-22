@@ -254,3 +254,90 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+/**
+ * 🍉 Watermelon UI Style Dynamic Pagination Generator
+ * @param {HTMLElement|string} container - Container element or selector
+ * @param {Object} options - { currentPage, totalPages, totalItems, itemsPerPage, onPageChange }
+ */
+function createWatermelonPagination(container, options = {}) {
+    const el = typeof container === 'string' ? document.querySelector(container) : container;
+    if (!el) return;
+
+    const currentPage = parseInt(options.currentPage || 1, 10);
+    const totalPages = parseInt(options.totalPages || 1, 10);
+    const totalItems = options.totalItems;
+    const range = options.range || 2;
+    const onPageChange = typeof options.onPageChange === 'function' ? options.onPageChange : null;
+
+    if (totalPages <= 1) {
+        el.innerHTML = '';
+        return;
+    }
+
+    let html = '<div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3 my-4 w-100">';
+    
+    if (totalItems !== undefined) {
+        html += `<div class="wm-pagination-meta text-muted small">Showing page <span class="highlight">${currentPage}</span> of <span class="highlight">${totalPages}</span> (${totalItems} total items)</div>`;
+    } else {
+        html += `<div></div>`;
+    }
+
+    html += '<div class="wm-pagination">';
+
+    // Prev Button
+    if (currentPage > 1) {
+        html += `<button class="wm-page-item wm-page-nav" data-page="${currentPage - 1}" title="Previous Page"><i class="fa-solid fa-chevron-left fa-xs"></i> <span>Prev</span></button>`;
+    } else {
+        html += `<button class="wm-page-item wm-page-nav" disabled><i class="fa-solid fa-chevron-left fa-xs"></i> <span>Prev</span></button>`;
+    }
+
+    // Page Numbers
+    const start = Math.max(1, currentPage - range);
+    const end = Math.min(totalPages, currentPage + range);
+
+    if (start > 1) {
+        html += `<button class="wm-page-item" data-page="1">1</button>`;
+        if (start > 2) {
+            html += `<span class="wm-page-ellipsis">&hellip;</span>`;
+        }
+    }
+
+    for (let p = start; p <= end; p++) {
+        if (p === currentPage) {
+            html += `<button class="wm-page-item active" aria-current="page">${p}</button>`;
+        } else {
+            html += `<button class="wm-page-item" data-page="${p}">${p}</button>`;
+        }
+    }
+
+    if (end < totalPages) {
+        if (end < totalPages - 1) {
+            html += `<span class="wm-page-ellipsis">&hellip;</span>`;
+        }
+        html += `<button class="wm-page-item" data-page="${totalPages}">${totalPages}</button>`;
+    }
+
+    // Next Button
+    if (currentPage < totalPages) {
+        html += `<button class="wm-page-item wm-page-nav" data-page="${currentPage + 1}" title="Next Page"><span>Next</span> <i class="fa-solid fa-chevron-right fa-xs"></i></button>`;
+    } else {
+        html += `<button class="wm-page-item wm-page-nav" disabled><span>Next</span> <i class="fa-solid fa-chevron-right fa-xs"></i></button>`;
+    }
+
+    html += '</div></div>';
+
+    el.innerHTML = html;
+
+    // Attach click listeners
+    el.querySelectorAll('.wm-page-item[data-page]').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetPage = parseInt(this.dataset.page, 10);
+            if (onPageChange && targetPage !== currentPage) {
+                onPageChange(targetPage);
+            }
+        });
+    });
+}
+

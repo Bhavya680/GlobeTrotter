@@ -1,0 +1,64 @@
+{
+  "categories": [
+    {
+      "id": "sightseeing",
+      "label": "Sightseeing",
+      "icon": "fa-landmark",
+      "typical_cost_range": {"min": 0, "max": 50, "currency": "USD"},
+      "typical_duration_range": {"min": 1, "max": 3, "unit": "hours"},
+      "keywords": ["museum", "monument", "landmark", "viewpoint", "tour"],
+      "best_time_of_day": ["morning", "afternoon"],
+      "sub_categories": ["free attractions", "museums", "architecture", "nature"]
+    },
+    {
+      "id": "food",
+      "label": "Food",
+      "icon": "fa-utensils",
+      "typical_cost_range": {"min": 5, "max": 80, "currency": "USD"},
+      "typical_duration_range": {"min": 1, "max": 4, "unit": "hours"},
+      "keywords": ["restaurant", "street food", "tasting", "cooking class", "market"],
+      "best_time_of_day": ["afternoon", "evening"],
+      "sub_categories": ["fine dining", "street food", "tours"]
+    },
+    {
+      "id": "adventure",
+      "label": "Adventure",
+      "icon": "fa-mountain",
+      "typical_cost_range": {"min": 30, "max": 200, "currency": "USD"},
+      "typical_duration_range": {"min": 2, "max": 8, "unit": "hours"},
+      "keywords": ["hiking", "water sports", "extreme", "outdoor"],
+      "best_time_of_day": ["morning"],
+      "sub_categories": ["water", "mountain", "extreme"]
+    },
+    {
+      "id": "culture",
+      "label": "Culture",
+      "icon": "fa-masks-theater",
+      "typical_cost_range": {"min": 20, "max": 150, "currency": "USD"},
+      "typical_duration_range": {"min": 2, "max": 4, "unit": "hours"},
+      "keywords": ["theatre", "concert", "festival", "ceremony", "art"],
+      "best_time_of_day": ["evening"],
+      "sub_categories": ["performance", "local life"]
+    },
+    {
+      "id": "shopping",
+      "label": "Shopping",
+      "icon": "fa-bag-shopping",
+      "typical_cost_range": {"min": 0, "max": 500, "currency": "USD"},
+      "typical_duration_range": {"min": 1, "max": 3, "unit": "hours"},
+      "keywords": ["market", "mall", "boutique", "artisan"],
+      "best_time_of_day": ["afternoon"],
+      "sub_categories": ["markets", "malls", "boutiques"]
+    },
+    {
+      "id": "wellness",
+      "label": "Wellness",
+      "icon": "fa-spa",
+      "typical_cost_range": {"min": 20, "max": 200, "currency": "USD"},
+      "typical_duration_range": {"min": 1, "max": 3, "unit": "hours"},
+      "keywords": ["spa", "yoga", "meditation", "baths", "retreat"],
+      "best_time_of_day": ["morning", "afternoon"],
+      "sub_categories": ["spa", "mindfulness", "fitness"]
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "description": "Defines core entities and their relationships",
+  "entities": {
+    "User": {
+      "fields": ["id", "name", "email", "city", "country", "role", "created_at"]
+    },
+    "Trip": {
+      "fields": ["id", "name", "description", "start_date", "end_date", "status", "visibility", "stops"]
+    },
+    "TripStop": {
+      "fields": ["id", "trip_id", "city", "arrival_date", "departure_date", "order", "budget", "activities"]
+    },
+    "City": {
+      "fields": ["id", "name", "country", "region", "cost_index", "popularity_score"]
+    },
+    "Activity": {
+      "fields": ["id", "name", "city_id", "category", "cost", "duration_hours", "description"]
+    },
+    "TripActivity": {
+      "fields": ["id", "stop_id", "activity_id", "scheduled_date", "scheduled_time", "custom_cost"]
+    },
+    "TripBudget": {
+      "fields": ["id", "trip_id", "transport", "stay", "activities", "meals", "misc", "total"]
+    },
+    "CommunityPost": {
+      "fields": ["id", "user_id", "trip_id", "title", "content", "tags", "likes_count"]
+    },
+    "CommunityComment": {
+      "fields": ["id", "post_id", "user_id", "content", "created_at"]
+    },
+    "SavedDestination": {
+      "fields": ["id", "user_id", "city_id"]
+    }
+  },
+  "relationships": [
+    {"from": "Trip", "to": "TripStop", "type": "one-to-many", "cascade_delete": true},
+    {"from": "TripStop", "to": "TripActivity", "type": "one-to-many", "cascade_delete": true},
+    {"from": "TripStop", "to": "City", "type": "many-to-one"},
+    {"from": "TripActivity", "to": "Activity", "type": "many-to-one"},
+    {"from": "Trip", "to": "TripBudget", "type": "one-to-one"},
+    {"from": "User", "to": "Trip", "type": "one-to-many"},
+    {"from": "User", "to": "SavedDestination", "type": "one-to-many"},
+    {"from": "User", "to": "CommunityPost", "type": "one-to-many"},
+    {"from": "CommunityPost", "to": "CommunityComment", "type": "one-to-many"}
+  ]
+}

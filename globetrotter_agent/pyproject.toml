@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "globetrotter-agent"
+version = "0.1.0"
+description = "GlobeTrotter AI travel assistant using Google ADK."
+authors = ["GlobeTrotter Team"]
+readme = "README.md"
+packages = [{include = "globetrotter_agent"}]
+
+[tool.poetry.dependencies]
+python = ">=3.11"
+google-adk = "*"
+python-dotenv = "*"
+requests = "*"
+python-frontmatter = "*"
+pyyaml = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-asyncio = "*"
+
+[tool.poetry.scripts]
+adk = "google.adk.cli:main"
+
+[tool.adk]
+package = "globetrotter_agent"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

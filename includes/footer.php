@@ -7,5 +7,8 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <!-- Global JS utilities -->
     <script src="<?= SITE_URL ?>/assets/js/main.js"></script>
+
+    <!-- GlobeBot Chat Widget -->
+    <?php include __DIR__ . '/chat_widget.php'; ?>
 </body>
 </html>

@@ -1,0 +1,2 @@
+// Specification:
+// - JSON Schema defining Trip, Stop, and Activity entities to sync agent understanding with the PHP backend data structures.

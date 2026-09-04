@@ -1,0 +1,49 @@
+{
+  "regions": [
+    {
+      "id": "asia",
+      "label": "Asia",
+      "color_code": "#EF4444",
+      "countries": ["Japan", "Thailand", "Indonesia", "China", "India"],
+      "seed_cities": ["Tokyo", "Bangkok", "Bali"],
+      "general_cost_tier": "budget-to-mid",
+      "peak_travel_months": [11, 12, 1, 2, 3]
+    },
+    {
+      "id": "europe",
+      "label": "Europe",
+      "color_code": "#3B82F6",
+      "countries": ["France", "Italy", "Spain", "Germany", "UK"],
+      "seed_cities": ["Paris", "Rome"],
+      "general_cost_tier": "mid-to-high",
+      "peak_travel_months": [6, 7, 8]
+    },
+    {
+      "id": "americas",
+      "label": "Americas",
+      "color_code": "#10B981",
+      "countries": ["USA", "Canada", "Mexico", "Brazil", "Argentina"],
+      "seed_cities": ["New York"],
+      "general_cost_tier": "varies-widely",
+      "peak_travel_months": [6, 7, 8, 12, 1]
+    },
+    {
+      "id": "africa",
+      "label": "Africa",
+      "color_code": "#F59E0B",
+      "countries": ["South Africa", "Kenya", "Morocco", "Egypt"],
+      "seed_cities": ["Cape Town"],
+      "general_cost_tier": "budget-to-high",
+      "peak_travel_months": [12, 1, 2, 7, 8]
+    },
+    {
+      "id": "middle_east",
+      "label": "Middle East",
+      "color_code": "#8B5CF6",
+      "countries": ["UAE", "Jordan", "Israel", "Turkey"],
+      "seed_cities": ["Dubai"],
+      "general_cost_tier": "mid-to-high",
+      "peak_travel_months": [11, 12, 1, 2, 3]
+    }
+  ]
+}

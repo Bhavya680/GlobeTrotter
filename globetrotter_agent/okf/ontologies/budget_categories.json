@@ -1,0 +1,49 @@
+{
+  "budget_categories": [
+    {
+      "id": "transport",
+      "label": "Transport",
+      "icon": "fa-plane",
+      "db_field": "transport_budget",
+      "includes": ["flights", "trains", "buses", "taxis", "car rental"],
+      "excludes": ["activities that involve transport e.g. boat tours"],
+      "estimation_factor": "varies widely — major expense, research needed"
+    },
+    {
+      "id": "stay",
+      "label": "Stay",
+      "icon": "fa-bed",
+      "db_field": "stay_budget",
+      "includes": ["hotels", "hostels", "airbnb", "guesthouses"],
+      "excludes": ["long-term rentals"],
+      "estimation_factor": "highly dependent on city cost_index"
+    },
+    {
+      "id": "activities",
+      "label": "Activities",
+      "icon": "fa-ticket",
+      "db_field": "activities_budget",
+      "includes": ["entry fees", "tours", "experiences"],
+      "excludes": ["food eaten during activity"],
+      "estimation_factor": "depends on pacing (number of activities per day)"
+    },
+    {
+      "id": "meals",
+      "label": "Meals",
+      "icon": "fa-utensils",
+      "db_field": "meals_budget",
+      "includes": ["breakfast", "lunch", "dinner", "snacks"],
+      "excludes": ["expensive alcohol/clubbing"],
+      "estimation_factor": "base daily rate * cost_index modifier"
+    },
+    {
+      "id": "misc",
+      "label": "Miscellaneous",
+      "icon": "fa-wallet",
+      "db_field": "misc_budget",
+      "includes": ["souvenirs", "tips", "sim cards", "insurance", "emergency"],
+      "excludes": ["planned travel expenses"],
+      "estimation_factor": "recommend 10-15% of total budget"
+    }
+  ]
+}

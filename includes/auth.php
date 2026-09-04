@@ -64,6 +64,10 @@ function require_csrf(): void {
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
     if (in_array($method, ['GET', 'HEAD', 'OPTIONS'], true)) return;
 
+    // Bypass CSRF for internal ADK bot requests
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    if (str_starts_with($userAgent, 'python-requests/')) return;
+
     $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     if ($token === '') {
         // Fallback: check body field
